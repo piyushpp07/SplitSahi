@@ -1,11 +1,16 @@
 import { useState, useCallback } from "react";
-import { View, Text, FlatList, ActivityIndicator, RefreshControl, TouchableOpacity, TextInput } from "react-native";
+import { View, Text, FlatList, ActivityIndicator, RefreshControl, TouchableOpacity, TextInput, LayoutAnimation, StyleSheet, Platform, UIManager } from "react-native";
 import { useQuery } from "@tanstack/react-query";
 import { apiGet } from "@/lib/api";
 import { Ionicons } from "@expo/vector-icons";
 import { useAuthStore } from "@/store/authStore";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { router, useFocusEffect } from "expo-router";
+import { useTheme } from "@/contexts/ThemeContext";
+
+if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
+  UIManager.setLayoutAnimationEnabledExperimental(true);
+}
 
 interface ActivityItem {
   type: "expense" | "settlement";
@@ -17,6 +22,7 @@ interface ActivityItem {
 type FilterType = "all" | "expenses" | "settlements";
 
 export default function ActivityScreen() {
+  const { colors, isDark } = useTheme();
   const userId = useAuthStore((s) => s.user?.id);
   const [filter, setFilter] = useState<FilterType>("all");
   const [search, setSearch] = useState("");
@@ -83,46 +89,190 @@ export default function ActivityScreen() {
            `, ${date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`;
   }
 
+  const styles = StyleSheet.create({
+    container: {
+      flex: 1,
+      backgroundColor: colors.background,
+    },
+    header: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      marginBottom: 24,
+      marginTop: 16,
+    },
+    headerTitle: {
+      fontSize: 32,
+      fontWeight: 'bold',
+      color: colors.text,
+      letterSpacing: -1,
+      fontStyle: 'italic',
+    },
+    headerSubtitle: {
+      fontSize: 14,
+      color: colors.textSecondary,
+    },
+    iconBtn: {
+      height: 40,
+      width: 40,
+      borderRadius: 12,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    searchContainer: {
+      marginBottom: 16,
+      backgroundColor: colors.surface,
+      borderRadius: 12,
+      borderWidth: 1,
+      borderColor: colors.border,
+      flexDirection: 'row',
+      alignItems: 'center',
+      paddingHorizontal: 12,
+      height: 48,
+    },
+    searchInput: {
+      flex: 1,
+      marginLeft: 8,
+      color: colors.text,
+      fontSize: 14,
+    },
+    filterContainer: {
+      flexDirection: 'row',
+      backgroundColor: colors.surface,
+      borderRadius: 12,
+      padding: 4,
+      marginBottom: 16,
+      borderWidth: 1,
+      borderColor: colors.border,
+    },
+    filterTab: {
+      flex: 1,
+      paddingVertical: 10,
+      borderRadius: 8,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    filterText: {
+      fontSize: 12,
+      fontWeight: 'bold',
+    },
+    itemCard: {
+      marginBottom: 12,
+      backgroundColor: colors.surface,
+      borderRadius: 16,
+      padding: 16,
+      borderWidth: 1,
+      borderColor: colors.border,
+      flexDirection: 'row',
+      alignItems: 'flex-start',
+    },
+    itemIcon: {
+      height: 40,
+      width: 40,
+      borderRadius: 12,
+      alignItems: 'center',
+      justifyContent: 'center',
+      marginRight: 12,
+    },
+    itemContent: {
+      flex: 1,
+    },
+    itemTitle: {
+      color: colors.text,
+      fontWeight: 'bold',
+      fontSize: 14,
+    },
+    itemSubtitle: {
+      color: colors.textSecondary,
+      fontSize: 12,
+      marginTop: 2,
+    },
+    itemMeta: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      marginTop: 4,
+    },
+    amountContainer: {
+      alignItems: 'flex-end',
+    },
+    amount: {
+      fontSize: 16,
+      fontWeight: 'bold',
+    },
+    category: {
+      color: colors.textSecondary,
+      fontSize: 10,
+      marginTop: 2,
+      textTransform: 'uppercase',
+      fontWeight: 'bold',
+    },
+    emptyState: {
+      marginTop: 80,
+      alignItems: 'center',
+    },
+    emptyIcon: {
+      backgroundColor: colors.surfaceActive,
+      padding: 24,
+      borderRadius: 50,
+      marginBottom: 16,
+    },
+    emptyText: {
+      color: colors.textSecondary,
+      fontWeight: 'bold',
+      fontSize: 16,
+    },
+    emptySubtext: {
+      color: colors.textTertiary,
+      fontSize: 14,
+      marginTop: 4,
+    }
+  });
+
   return (
-    <SafeAreaView className="flex-1 bg-[#020617]" edges={['top']}>
-      <View className="flex-1 px-5">
+    <SafeAreaView style={styles.container} edges={['top']}>
+      <View style={{ flex: 1, paddingHorizontal: 20 }}>
         {/* Header */}
-        <View className="mb-6 mt-4 flex-row justify-between items-center">
+        <View style={styles.header}>
           <View>
-            <Text className="text-2xl font-bold text-white">Activity</Text>
-            <Text className="text-slate-500 text-sm">Your recent transactions</Text>
+            <Text style={styles.headerTitle}>Activity</Text>
+            <Text style={styles.headerSubtitle}>Your recent transactions</Text>
           </View>
           <TouchableOpacity 
-            onPress={() => setShowSearch(!showSearch)}
-            className={`h-10 w-10 rounded-xl items-center justify-center ${showSearch ? 'bg-primary' : 'bg-slate-800'}`}
+            onPress={() => {
+                LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+                setShowSearch(!showSearch);
+                if (showSearch) setSearch("");
+              }}
+            style={[
+              styles.iconBtn, 
+              { backgroundColor: showSearch ? colors.primary : colors.surface, borderWidth: 1, borderColor: showSearch ? colors.primary : colors.border }
+            ]}
           >
-            <Ionicons name="search" size={20} color={showSearch ? "#020617" : "#94a3b8"} />
+            <Ionicons name="search" size={20} color={showSearch ? '#fff' : colors.textSecondary} />
           </TouchableOpacity>
         </View>
 
         {showSearch && (
-          <View className="mb-4 bg-slate-900 rounded-xl border border-slate-800 p-1 flex-row items-center">
-            <View className="h-10 w-10 items-center justify-center ml-2">
-              <Ionicons name="search" size={20} color="#64748b" />
-            </View>
+          <View style={styles.searchContainer}>
+            <Ionicons name="search" size={20} color={colors.textTertiary} />
             <TextInput
-              className="flex-1 px-3 py-3 text-white "
+              style={styles.searchInput}
               placeholder="Search expenses..."
-              placeholderTextColor="#475569"
+              placeholderTextColor={colors.textMuted}
               value={search}
               onChangeText={setSearch}
               autoFocus
             />
             {search.length > 0 && (
-              <TouchableOpacity onPress={() => setSearch("")} className="mr-3">
-                <Ionicons name="close-circle" size={18} color="#64748b" />
+              <TouchableOpacity onPress={() => setSearch("")}>
+                <Ionicons name="close-circle" size={18} color={colors.textTertiary} />
               </TouchableOpacity>
             )}
           </View>
         )}
 
         {/* Filter Tabs */}
-        <View className="flex-row bg-slate-900 rounded-xl p-1 mb-4">
+        <View style={styles.filterContainer}>
           {[
             { key: "all", label: "All" },
             { key: "expenses", label: "Expenses" },
@@ -130,10 +280,19 @@ export default function ActivityScreen() {
           ].map((f) => (
             <TouchableOpacity
               key={f.key}
-              onPress={() => setFilter(f.key as FilterType)}
-              className={`flex-1 py-2.5 rounded-lg ${filter === f.key ? 'bg-slate-700' : ''}`}
+              onPress={() => {
+                LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+                setFilter(f.key as FilterType);
+              }}
+              style={[
+                styles.filterTab,
+                { backgroundColor: filter === f.key ? colors.surfaceActive : 'transparent' }
+              ]}
             >
-              <Text className={`text-center font-bold text-sm ${filter === f.key ? 'text-white' : 'text-slate-500'}`}>
+              <Text style={[
+                styles.filterText,
+                { color: filter === f.key ? colors.text : colors.textSecondary }
+              ]}>
                 {f.label}
               </Text>
             </TouchableOpacity>
@@ -141,78 +300,80 @@ export default function ActivityScreen() {
         </View>
 
         {isLoading ? (
-          <ActivityIndicator color="#38bdf8" size="large" className="mt-20" />
+          <ActivityIndicator color={colors.primary} size="large" style={{ marginTop: 80 }} />
         ) : (
           <FlatList
             data={filteredActivities}
             keyExtractor={(item) => `${item.type}-${item.id}`}
             showsVerticalScrollIndicator={false}
+            contentContainerStyle={{ paddingBottom: 100 }}
             refreshControl={
-              <RefreshControl refreshing={isFetching} onRefresh={refetch} tintColor="#38bdf8" />
+              <RefreshControl refreshing={isFetching} onRefresh={refetch} tintColor={colors.primary} />
             }
             renderItem={({ item }) => {
               const isSettlement = item.type === "settlement";
+              const amountColor = isSettlement ? colors.warning : colors.success;
+              const iconColor = isSettlement ? colors.warning : colors.success;
+              const iconBg = colors.surfaceActive; // Simple background for icons
               
               return (
                 <TouchableOpacity 
-                  className="mb-3 bg-slate-900/50 rounded-xl p-4 border border-slate-800"
+                  style={styles.itemCard}
                   onPress={() => handlePress(item)}
                   activeOpacity={isSettlement ? 1 : 0.7}
                 >
-                  <View className="flex-row items-start">
-                    <View className={`h-10 w-10 rounded-xl items-center justify-center mr-3 ${isSettlement ? 'bg-amber-500/20' : 'bg-emerald-500/20'}`}>
-                      <Ionicons 
-                        name={isSettlement ? "swap-horizontal" : "receipt"} 
-                        size={18} 
-                        color={isSettlement ? "#f59e0b" : "#10b981"} 
-                      />
-                    </View>
-                    
-                    <View className="flex-1">
-                      {isSettlement ? (
-                        <>
-                          <Text className="text-white font-bold">
-                            {item.data.fromUser?.name} paid {item.data.toUser?.name}
+                  <View style={[styles.itemIcon, { backgroundColor: iconBg }]}>
+                    <Ionicons 
+                      name={isSettlement ? "swap-horizontal" : "receipt"} 
+                      size={18} 
+                      color={iconColor} 
+                    />
+                  </View>
+                  
+                  <View style={styles.itemContent}>
+                    {isSettlement ? (
+                      <>
+                        <Text style={styles.itemTitle}>
+                          {item.data.fromUser?.name} paid {item.data.toUser?.name}
+                        </Text>
+                        <Text style={styles.itemSubtitle}>{formatDate(item.createdAt)}</Text>
+                      </>
+                    ) : (
+                      <>
+                        <Text style={styles.itemTitle}>{item.data.title}</Text>
+                        <View style={styles.itemMeta}>
+                          <Text style={styles.itemSubtitle}>
+                            {item.data.creator?.name} • {formatDate(item.createdAt)}
                           </Text>
-                          <Text className="text-slate-500 text-xs mt-0.5">{formatDate(item.createdAt)}</Text>
-                        </>
-                      ) : (
-                        <>
-                          <Text className="text-white font-bold">{item.data.title}</Text>
-                          <View className="flex-row items-center mt-0.5">
-                            <Text className="text-slate-500 text-xs">
-                              {item.data.creator?.name} • {formatDate(item.createdAt)}
-                            </Text>
+                        </View>
+                        {item.data.group && (
+                          <View style={styles.itemMeta}>
+                            <Ionicons name="people" size={10} color={colors.textTertiary} />
+                            <Text style={[styles.itemSubtitle, { marginLeft: 4, fontSize: 10 }]}>{item.data.group.name}</Text>
                           </View>
-                          {item.data.group && (
-                            <View className="flex-row items-center mt-1">
-                              <Ionicons name="people" size={12} color="#475569" />
-                              <Text className="text-slate-500 text-xs ml-1">{item.data.group.name}</Text>
-                            </View>
-                          )}
-                        </>
-                      )}
-                    </View>
-                    
-                    <View className="items-end">
-                      <Text className={`font-bold text-lg ${isSettlement ? 'text-amber-400' : 'text-emerald-400'}`}>
-                        ₹{Number(isSettlement ? item.data.amount : item.data.totalAmount).toFixed(0)}
-                      </Text>
-                      {!isSettlement && (
-                        <Text className="text-slate-600 text-xs">{item.data.category}</Text>
-                      )}
-                    </View>
+                        )}
+                      </>
+                    )}
+                  </View>
+                  
+                  <View style={styles.amountContainer}>
+                    <Text style={[styles.amount, { color: amountColor }]}>
+                      ₹{Number(isSettlement ? item.data.amount : item.data.totalAmount).toFixed(0)}
+                    </Text>
+                    {!isSettlement && (
+                      <Text style={styles.category}>{item.data.category}</Text>
+                    )}
                   </View>
                 </TouchableOpacity>
               );
             }}
             ListEmptyComponent={
-              <View className="mt-20 items-center">
-                <View className="bg-slate-900/50 p-6 rounded-full mb-4">
-                  <Ionicons name="search" size={32} color="#334155" />
+              <View style={styles.emptyState}>
+                <View style={styles.emptyIcon}>
+                  <Ionicons name="search" size={32} color={colors.textSecondary} />
                 </View>
-                <Text className="text-slate-400 font-bold">{search ? "No results found" : "No activity yet"}</Text>
-                <Text className="text-slate-600 text-sm mt-1">{search ? "Try a different search term" : "Start adding expenses to see them here"}</Text>
+                <Text style={styles.emptyText}>{search ? "No results found" : "No activity yet"}</Text>
+                <Text style={styles.emptySubtext}>{search ? "Try a different search term" : "Start adding expenses to see them here"}</Text>
               </View>
             }
           />

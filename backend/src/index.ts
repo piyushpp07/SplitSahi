@@ -11,7 +11,12 @@ import { activityRouter } from "./routes/activity.js";
 import { upiRouter } from "./routes/upi.js";
 import { friendshipsRouter } from "./routes/friendships.js";
 import { friendBalanceRouter } from "./routes/friendBalance.js";
+import { analyticsRouter } from "./routes/analytics.js";
+import { currencyRouter } from "./routes/currency.js";
+import { otpRouter } from "./routes/otp.js";
 import { errorHandler } from "./middleware/errorHandler.js";
+import { initScheduler } from "./services/scheduler.js";
+import { initCurrencyService } from "./services/currency.js";
 
 const app = express();
 const PORT = process.env.PORT ?? 4000;
@@ -29,10 +34,18 @@ app.use("/api/activity", activityRouter);
 app.use("/api/upi", upiRouter);
 app.use("/api/friendships", friendshipsRouter);
 app.use("/api/friend-balance", friendBalanceRouter);
+app.use("/api/analytics", analyticsRouter);
+app.use("/api/currency", currencyRouter);
+app.use("/api/otp", otpRouter);
 
 app.get("/health", (_req, res) => res.json({ ok: true, service: "splitsahise-api" }));
 
 app.use(errorHandler);
+
+
+// Initialize Services
+initScheduler();
+initCurrencyService();
 
 app.listen(PORT, () => {
   console.log(`SplitSahiSe API running at http://localhost:${PORT}`);

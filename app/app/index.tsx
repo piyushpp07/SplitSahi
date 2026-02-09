@@ -1,16 +1,17 @@
-import { useEffect } from "react";
 import { View, Text, ActivityIndicator } from "react-native";
 import { Redirect } from "expo-router";
 import { useAuthStore } from "@/store/authStore";
+import { useTheme } from "@/contexts/ThemeContext";
 
 export default function Index() {
   const { hydrated, token } = useAuthStore();
+  const { colors } = useTheme();
 
   if (!hydrated) {
     return (
-      <View className="flex-1 bg-surface-dark items-center justify-center">
-        <ActivityIndicator size="large" color="#38bdf8" />
-        <Text className="text-slate-300 mt-4">Loading...</Text>
+      <View style={{ flex: 1, backgroundColor: colors.background, alignItems: 'center', justifyContent: 'center' }}>
+        <ActivityIndicator size="large" color={colors.primary} />
+        <Text style={{ marginTop: 16, color: colors.textSecondary }}>Loading...</Text>
       </View>
     );
   }

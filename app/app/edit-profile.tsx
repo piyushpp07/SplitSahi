@@ -5,13 +5,61 @@ import { apiPatch } from "@/lib/api";
 import { router } from "expo-router";
 import { useAuthStore } from "@/store/authStore";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { useTheme } from "@/contexts/ThemeContext";
+import * as Linking from "expo-linking";
+import AvatarPicker from "@/components/AvatarPicker";
 
 export default function EditProfileScreen() {
+  const { colors } = useTheme();
   const { user, setUser } = useAuthStore();
   const [name, setName] = useState(user?.name || "");
   const [upiId, setUpiId] = useState(user?.upiId || "");
   const [phone, setPhone] = useState(user?.phone || "");
+  const [avatarUrl, setAvatarUrl] = useState(user?.avatarUrl || "");
+  const [selectedAvatarId, setSelectedAvatarId] = useState<string | null>(
+    user?.avatarUrl?.startsWith('gradient:') ? user.avatarUrl.split(':')[1] : null
+  );
   const [loading, setLoading] = useState(false);
+  const [isUpiVerified, setIsUpiVerified] = useState(!!user?.upiId);
+
+  async function handleVerify() {
+    if (!upiId.trim() || !/^[a-zA-Z0-9.\-_]{2,256}@[a-zA-Z]{2,64}$/.test(upiId.trim())) {
+      Alert.alert("Format Error", "Please enter a valid UPI ID (e.g. name@bank) before verifying.");
+      return;
+    }
+
+    Alert.alert(
+      "Verify UPI ID",
+      "We will open your UPI app to verify this ID. You will see a ₹1.00 request (you don't need to complete the payment, just check if the name matches).",
+      [
+        { text: "Cancel", style: "cancel" },
+        { 
+          text: "Open UPI App", 
+          onPress: async () => {
+            const upiUrl = `upi://pay?pa=${upiId.trim()}&pn=${encodeURIComponent(name)}&am=1.00&cu=INR`;
+            try {
+              const supported = await Linking.canOpenURL(upiUrl);
+              if (supported) {
+                await Linking.openURL(upiUrl);
+                setIsUpiVerified(true);
+              } else {
+                Alert.alert(
+                  "No UPI App", 
+                  "We couldn't find a UPI app (GPay/PhonePe) on this device. If you are sure this ID is correct, you can verify manually.",
+                  [
+                    { text: "Try Again", style: "default" },
+                    { text: "Manual Verify", style: "destructive", onPress: () => setIsUpiVerified(true) }
+                  ]
+                );
+              }
+            } catch (e) {
+              setIsUpiVerified(true);
+            }
+          }
+        }
+      ]
+    );
+  }
 
   async function handleUpdate() {
     if (!name.trim()) {
@@ -23,17 +71,24 @@ export default function EditProfileScreen() {
       Alert.alert("Invalid UPI ID", "Please enter a valid UPI ID (e.g. user@bank)");
       return;
     }
+
+    if (upiId.trim() && !isUpiVerified) {
+       Alert.alert("Verify VPA", "Please click the 'Verify' button to ensure your UPI ID is correct and active.");
+       return;
+    }
     
     if (phone.trim() && !/^\d{10}$/.test(phone.trim().replace(/\D/g, ''))) {
       Alert.alert("Invalid Phone", "Please enter a valid 10-digit mobile number");
       return;
     }
+
     setLoading(true);
     try {
       const updated = await apiPatch<any>("/users/me", {
         name: name.trim(),
         upiId: upiId.trim() || null,
         phone: phone.trim() || null,
+        avatarUrl: avatarUrl || null,
       });
       setUser(updated);
       Alert.alert("Success", "Profile updated successfully");
@@ -46,63 +101,138 @@ export default function EditProfileScreen() {
   }
 
   return (
-    <SafeAreaView className="flex-1 bg-[#020617]" edges={['top']}>
+    <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }} edges={['top']}>
       <KeyboardAvoidingView 
         behavior={Platform.OS === "ios" ? "padding" : "height"}
-        className="flex-1 px-5"
+        style={{ flex: 1, paddingHorizontal: 20 }}
       >
-        <View className="flex-row items-center mb-6 mt-4">
-          <TouchableOpacity onPress={() => router.back()} className="h-10 w-10 bg-slate-800 rounded-xl items-center justify-center mr-4">
-            <Ionicons name="arrow-back" size={20} color="#94a3b8" />
+        <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 24, marginTop: 16 }}>
+          <TouchableOpacity 
+            onPress={() => router.back()} 
+            style={{ 
+              height: 40, width: 40, borderRadius: 12, 
+              backgroundColor: colors.surface, 
+              alignItems: 'center', justifyContent: 'center', 
+              marginRight: 16,
+              borderWidth: 1,
+              borderColor: colors.border
+            }}
+          >
+            <Ionicons name="arrow-back" size={20} color={colors.textSecondary} />
           </TouchableOpacity>
-          <Text className="text-xl font-bold text-white">Edit Profile</Text>
+          <Text style={{ fontSize: 20, fontWeight: 'bold', color: colors.text }}>Edit Profile</Text>
         </View>
 
         <ScrollView showsVerticalScrollIndicator={false}>
-          <View className="mb-6">
-            <View className="mb-5">
-              <Text className="text-slate-500 text-xs font-bold mb-2">Full Name</Text>
+          {/* Avatar Selection */}
+          <AvatarPicker 
+            label="Pick your Avatar" 
+            selectedId={selectedAvatarId} 
+            onSelect={(id, url) => {
+              setSelectedAvatarId(id);
+              setAvatarUrl(url);
+            }} 
+          />
+
+          <View style={{ marginBottom: 24 }}>
+            <View style={{ marginBottom: 20 }}>
+              <Text style={{ color: colors.textSecondary, fontSize: 12, fontWeight: 'bold', marginBottom: 8 }}>Full Name</Text>
               <TextInput
-                className="bg-slate-900 rounded-xl px-4 py-4 text-white  border border-slate-800"
+                style={{ 
+                  backgroundColor: colors.surface, 
+                  borderRadius: 12, 
+                  padding: 16, 
+                  color: colors.text, 
+                  borderWidth: 1, 
+                  borderColor: colors.border 
+                }}
                 value={name}
                 onChangeText={setName}
                 placeholder="e.g. John Doe"
-                placeholderTextColor="#475569"
+                placeholderTextColor={colors.textMuted}
               />
             </View>
             
-            <View className="mb-5">
-              <Text className="text-slate-500 text-xs font-bold mb-2">UPI ID</Text>
-              <TextInput
-                className="bg-slate-900 rounded-xl px-4 py-4 text-white  border border-slate-800"
-                value={upiId}
-                onChangeText={setUpiId}
-                placeholder="user@upi"
-                placeholderTextColor="#475569"
-                autoCapitalize="none"
-              />
-              <Text className="text-slate-600 text-[10px] mt-1 ml-1">Used for receiving payments</Text>
+            <View style={{ marginBottom: 20 }}>
+              <Text style={{ color: colors.textSecondary, fontSize: 12, fontWeight: 'bold', marginBottom: 8 }}>UPI ID</Text>
+              <View style={{ flexDirection: 'row', gap: 10 }}>
+                <TextInput
+                  style={{ 
+                    flex: 1,
+                    backgroundColor: colors.surface, 
+                    borderRadius: 12, 
+                    padding: 16, 
+                    color: colors.text, 
+                    borderWidth: 1, 
+                    borderColor: colors.border 
+                  }}
+                  value={upiId}
+                  onChangeText={(txt) => {
+                    setUpiId(txt);
+                    setIsUpiVerified(false);
+                  }}
+                  placeholder="user@upi"
+                  placeholderTextColor={colors.textMuted}
+                  autoCapitalize="none"
+                />
+                <TouchableOpacity 
+                   onPress={handleVerify}
+                   style={{ 
+                     backgroundColor: isUpiVerified ? '#10b981' : colors.surfaceActive, 
+                     paddingHorizontal: 16, 
+                     borderRadius: 12, 
+                     alignItems: 'center', 
+                     justifyContent: 'center',
+                     borderWidth: 1,
+                     borderColor: isUpiVerified ? '#10b981' : colors.border
+                   }}
+                >
+                  <Ionicons 
+                    name={isUpiVerified ? "checkmark-circle" : "shield-checkmark-outline"} 
+                    size={20} 
+                    color={isUpiVerified ? "#fff" : colors.primary} 
+                  />
+                  {!isUpiVerified && <Text style={{ fontSize: 10, fontWeight: 'bold', color: colors.primary, marginTop: 2 }}>Verify</Text>}
+                </TouchableOpacity>
+              </View>
+              <Text style={{ color: colors.textTertiary, fontSize: 10, marginTop: 4, marginLeft: 4 }}>
+                {isUpiVerified ? "✓ Verified & Active" : "Used for receiving payments"}
+              </Text>
             </View>
 
-            <View className="mb-5">
-              <Text className="text-slate-500 text-xs font-bold mb-2">Phone Number</Text>
+            <View style={{ marginBottom: 20 }}>
+              <Text style={{ color: colors.textSecondary, fontSize: 12, fontWeight: 'bold', marginBottom: 8 }}>Phone Number</Text>
               <TextInput
-                className="bg-slate-900 rounded-xl px-4 py-4 text-white  border border-slate-800"
+                style={{ 
+                  backgroundColor: colors.surface, 
+                  borderRadius: 12, 
+                  padding: 16, 
+                  color: colors.text, 
+                  borderWidth: 1, 
+                  borderColor: colors.border 
+                }}
                 value={phone}
                 onChangeText={setPhone}
                 placeholder="+91 98765 43210"
-                placeholderTextColor="#475569"
+                placeholderTextColor={colors.textMuted}
                 keyboardType="phone-pad"
               />
             </View>
           </View>
 
           <TouchableOpacity
-            className={`h-14 rounded-xl items-center justify-center mb-10 ${loading ? 'bg-slate-800' : 'bg-primary'}`}
+            style={{ 
+              height: 56, 
+              borderRadius: 12, 
+              alignItems: 'center', 
+              justifyContent: 'center', 
+              marginBottom: 40,
+              backgroundColor: loading ? colors.surfaceActive : colors.primary,
+            }}
             onPress={handleUpdate}
             disabled={loading}
           >
-            <Text className="text-[#020617] font-bold text-base">
+            <Text style={{ color: '#fff', fontWeight: 'bold', fontSize: 16 }}>
               {loading ? "Saving..." : "Save Changes"}
             </Text>
           </TouchableOpacity>

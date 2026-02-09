@@ -1,22 +1,60 @@
 import { useState } from "react";
-import { View, Text, TextInput, TouchableOpacity, FlatList, Alert, ActivityIndicator, Platform, KeyboardAvoidingView } from "react-native";
+import { View, Text, TextInput, TouchableOpacity, FlatList, Alert, ActivityIndicator, Platform, KeyboardAvoidingView, Share } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { apiGet, apiPost } from "@/lib/api";
 import { router } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { useTheme } from "@/contexts/ThemeContext";
+import * as Contacts from "expo-contacts";
 
 interface User {
   id: string;
   name: string;
-  email: string;
+  email?: string;
+  phone?: string;
   avatarUrl?: string;
 }
 
 export default function AddFriendScreen() {
+  const { colors, isDark } = useTheme();
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<User[]>([]);
   const [loading, setLoading] = useState(false);
   const [addingId, setAddingId] = useState<string | null>(null);
+
+  async function importFromContacts() {
+    try {
+      const { status } = await Contacts.requestPermissionsAsync();
+      if (status === 'granted') {
+        const { data } = await Contacts.getContactsAsync({
+          fields: [Contacts.Fields.Emails, Contacts.Fields.PhoneNumbers, Contacts.Fields.Name],
+        });
+
+        if (data.length > 0) {
+          Alert.alert(
+            "Contacts Synced", 
+            "You can now search for your friends by name or phone number in the search bar above.",
+            [{ text: "OK" }]
+          );
+        }
+      } else {
+          Alert.alert("Permission Denied", "We need contact permissions to help you find friends.");
+      }
+    } catch (e) {
+      Alert.alert("Error", "Failed to access contacts.");
+    }
+  }
+
+  async function shareAppInvite() {
+    const message = "Hey, let's split expenses easily on SplitSahi! Download now: https://splitsahi.se/download";
+    try {
+      await Share.share({
+        message,
+      });
+    } catch (error) {
+      console.log(error);
+    }
+  }
 
   async function searchUsers(text: string) {
     setQuery(text);
@@ -26,12 +64,10 @@ export default function AddFriendScreen() {
     }
     setLoading(true);
     try {
-      // Assuming this endpoint exists or will handle q parameter
       const users = await apiGet<User[]>(`/users/search?q=${encodeURIComponent(text)}`);
       setResults(users);
     } catch (e) {
       console.log(e);
-      // Fallback or empty if not found
       setResults([]);
     } finally {
       setLoading(false);
@@ -52,29 +88,75 @@ export default function AddFriendScreen() {
   }
 
   return (
-    <SafeAreaView className="flex-1 bg-[#020617]" edges={['top']}>
+    <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }} edges={['top']}>
       <KeyboardAvoidingView 
         behavior={Platform.OS === "ios" ? "padding" : "height"}
-        className="flex-1 px-5"
+        style={{ flex: 1, paddingHorizontal: 20 }}
       >
         {/* Header */}
-        <View className="flex-row items-center mb-6 mt-4">
-          <TouchableOpacity onPress={() => router.back()} className="h-10 w-10 bg-slate-800 rounded-xl items-center justify-center mr-4">
-            <Ionicons name="arrow-back" size={20} color="#94a3b8" />
+        <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 24, marginTop: 16 }}>
+          <TouchableOpacity 
+            onPress={() => router.back()} 
+            style={{ 
+              height: 40, width: 40, borderRadius: 12, 
+              backgroundColor: colors.surface, 
+              alignItems: 'center', justifyContent: 'center', 
+              marginRight: 16,
+              borderWidth: 1,
+              borderColor: colors.border
+            }}
+          >
+            <Ionicons name="arrow-back" size={20} color={colors.textSecondary} />
           </TouchableOpacity>
-          <Text className="text-xl font-bold text-white">Add Friend</Text>
+          <Text style={{ fontSize: 20, fontWeight: 'bold', color: colors.text }}>Add Friend</Text>
+        </View>
+
+        {/* Action Buttons */}
+        <View style={{ flexDirection: 'row', gap: 12, marginBottom: 24 }}>
+          <TouchableOpacity 
+             onPress={importFromContacts}
+             style={{ 
+               flex: 1, backgroundColor: colors.surface, 
+               paddingVertical: 12, borderRadius: 12, 
+               alignItems: 'center', justifyContent: 'center', 
+               flexDirection: 'row', gap: 8, borderWidth: 1, borderColor: colors.border 
+             }}
+          >
+            <Ionicons name="people-outline" size={18} color={colors.primary} />
+            <Text style={{ color: colors.text, fontWeight: 'bold', fontSize: 12 }}>Contacts</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity 
+             onPress={shareAppInvite}
+             style={{ 
+               flex: 1, backgroundColor: colors.surface, 
+               paddingVertical: 12, borderRadius: 12, 
+               alignItems: 'center', justifyContent: 'center', 
+               flexDirection: 'row', gap: 8, borderWidth: 1, borderColor: colors.border
+             }}
+          >
+            <Ionicons name="share-outline" size={18} color={colors.primary} />
+            <Text style={{ color: colors.text, fontWeight: 'bold', fontSize: 12 }}>Invite Friend</Text>
+          </TouchableOpacity>
         </View>
 
         {/* Search Input */}
-        <View className="mb-6">
-          <View className="bg-slate-900 rounded-xl border border-slate-800 p-1 flex-row items-center">
-            <View className="h-10 w-10 items-center justify-center ml-2">
-              <Ionicons name="search" size={20} color="#64748b" />
-            </View>
+        <View style={{ marginBottom: 24 }}>
+          <View style={{ 
+            backgroundColor: colors.surface, 
+            borderRadius: 12, 
+            borderWidth: 1, 
+            borderColor: colors.border, 
+            paddingHorizontal: 12, 
+            paddingVertical: 4, 
+            flexDirection: 'row', 
+            alignItems: 'center' 
+          }}>
+            <Ionicons name="search" size={20} color={colors.textTertiary} style={{ marginRight: 8 }} />
             <TextInput
-              className="flex-1 px-3 py-3 text-white "
-              placeholder="Search by name or email"
-              placeholderTextColor="#475569"
+              style={{ flex: 1, padding: 12, color: colors.text }}
+              placeholder="Search by name, email or phone"
+              placeholderTextColor={colors.textMuted}
               value={query}
               onChangeText={searchUsers}
               autoFocus
@@ -83,39 +165,63 @@ export default function AddFriendScreen() {
           </View>
         </View>
 
-        {loading && <ActivityIndicator color="#38bdf8" className="mb-4" />}
+        {loading && <ActivityIndicator color={colors.primary} style={{ marginBottom: 16 }} />}
 
         <FlatList
           data={results}
           keyExtractor={(item) => item.id}
           showsVerticalScrollIndicator={false}
           renderItem={({ item }) => (
-            <View className="bg-slate-900/50 rounded-xl p-4 flex-row items-center mb-3 border border-slate-800">
-              <View className="h-10 w-10 rounded-full bg-slate-800 items-center justify-center mr-3">
-                <Text className="text-sm font-bold text-white">{item.name[0]}</Text>
+            <View style={{ 
+              backgroundColor: colors.surface, 
+              borderRadius: 12, 
+              padding: 16, 
+              flexDirection: 'row', 
+              alignItems: 'center', 
+              marginBottom: 12, 
+              borderWidth: 1, 
+              borderColor: colors.border 
+            }}>
+              <View style={{ 
+                height: 40, width: 40, borderRadius: 20, 
+                backgroundColor: colors.surfaceActive, 
+                alignItems: 'center', justifyContent: 'center', 
+                marginRight: 12 
+              }}>
+                <Text style={{ fontSize: 16, fontWeight: 'bold', color: colors.primary }}>{item.name[0]}</Text>
               </View>
-              <View className="flex-1">
-                <Text className="text-white font-bold text-sm">{item.name}</Text>
-                <Text className="text-slate-500 text-xs">{item.email}</Text>
+              <View style={{ flex: 1 }}>
+                <Text style={{ color: colors.text, fontWeight: 'bold', fontSize: 14 }}>{item.name}</Text>
+                <Text style={{ color: colors.textSecondary, fontSize: 12 }}>{item.email || item.phone || "User"}</Text>
               </View>
               <TouchableOpacity
-                className={`h-9 px-4 rounded-lg items-center justify-center ${addingId === item.id ? 'bg-slate-800' : 'bg-primary'}`}
+                style={{ 
+                  height: 36, paddingHorizontal: 16, 
+                  borderRadius: 8, 
+                  alignItems: 'center', justifyContent: 'center', 
+                  backgroundColor: addingId === item.id ? colors.surfaceActive : colors.primary 
+                }}
                 onPress={() => addFriend(item.id)}
                 disabled={addingId !== null}
               >
                 {addingId === item.id ? (
-                  <ActivityIndicator size="small" color="#fff" />
+                  <ActivityIndicator size="small" color={colors.text} />
                 ) : (
-                  <Text className="text-[#020617] font-bold text-xs uppercase">Add</Text>
+                  <Text style={{ color: '#fff', fontWeight: 'bold', fontSize: 12, textTransform: 'uppercase' }}>Add</Text>
                 )}
               </TouchableOpacity>
             </View>
           )}
           ListEmptyComponent={
             !loading && query.length >= 2 ? (
-              <View className="items-center mt-10">
-                <Text className="text-slate-600 ">No users found</Text>
-                <Text className="text-slate-700 text-xs mt-1">Try a different name or email</Text>
+              <View style={{ alignItems: 'center', marginTop: 40 }}>
+                <Text style={{ color: colors.textSecondary, fontWeight: 'bold' }}>No users found on SplitSahi</Text>
+                <TouchableOpacity 
+                   onPress={shareAppInvite}
+                   style={{ marginTop: 12, backgroundColor: colors.primary + '20', paddingHorizontal: 16, paddingVertical: 8, borderRadius: 20 }}
+                >
+                   <Text style={{ color: colors.primary, fontWeight: 'bold', fontSize: 12 }}>Invite them to join!</Text>
+                </TouchableOpacity>
               </View>
             ) : null
           }

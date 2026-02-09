@@ -1,16 +1,17 @@
 import { useState, useEffect } from "react";
-import { View, Text, TouchableOpacity, Alert, Switch, ScrollView } from "react-native";
+import { View, Text, TouchableOpacity, Alert, Switch, ScrollView, StyleSheet } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { router } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
 import * as LocalAuthentication from "expo-local-authentication";
 import * as SecureStore from "expo-secure-store";
-import * as Notifications from 'expo-notifications';
+import { useTheme } from "@/contexts/ThemeContext";
 
 const BIOMETRIC_KEY = "splitsahise_biometric_enabled";
 const NOTIFICATIONS_KEY = "splitsahise_notifications_enabled";
 
 export default function PreferencesScreen() {
+  const { themeMode, setThemeMode, colors, isDark } = useTheme();
   const [biometricAvailable, setBiometricAvailable] = useState(false);
   const [biometricType, setBiometricType] = useState<string>("Biometric");
   const [biometricEnabled, setBiometricEnabled] = useState(false);
@@ -103,34 +104,134 @@ export default function PreferencesScreen() {
     }
   }
 
+  const styles = StyleSheet.create({
+    container: {
+      flex: 1,
+      backgroundColor: colors.background,
+    },
+    header: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      marginBottom: 24,
+      marginTop: 16,
+    },
+    backBtn: {
+      height: 40,
+      width: 40,
+      borderRadius: 12,
+      backgroundColor: colors.surface,
+      alignItems: 'center',
+      justifyContent: 'center',
+      marginRight: 16,
+      borderWidth: 1,
+      borderColor: colors.border,
+    },
+    headerTitle: {
+      fontSize: 20,
+      fontWeight: 'bold',
+      color: colors.text,
+    },
+    section: {
+      marginBottom: 24,
+    },
+    sectionTitle: {
+      color: colors.textSecondary,
+      fontSize: 12,
+      fontWeight: 'bold',
+      marginBottom: 12,
+      textTransform: 'uppercase',
+      letterSpacing: 1,
+    },
+    card: {
+      backgroundColor: colors.surface,
+      borderRadius: 16,
+      borderWidth: 1,
+      borderColor: colors.border,
+      overflow: 'hidden',
+    },
+    row: {
+      padding: 16,
+      flexDirection: 'row',
+      alignItems: 'center',
+      borderBottomWidth: 1,
+      borderBottomColor: colors.border,
+    },
+    lastRow: {
+      borderBottomWidth: 0,
+    },
+    rowIconContainer: {
+      height: 36,
+      width: 36,
+      borderRadius: 10,
+      backgroundColor: colors.surfaceActive,
+      alignItems: 'center',
+      justifyContent: 'center',
+      marginRight: 12,
+    },
+    rowContent: {
+      flex: 1,
+    },
+    rowTitle: {
+      color: colors.text,
+      fontWeight: 'bold',
+      fontSize: 14,
+    },
+    rowSubtitle: {
+      color: colors.textSecondary,
+      fontSize: 12,
+      marginTop: 2,
+    },
+    themeContainer: {
+      padding: 16,
+    },
+    themeOptions: {
+      flexDirection: 'row',
+      gap: 12,
+      marginTop: 12,
+    },
+    themeOption: {
+      flex: 1,
+      padding: 16,
+      borderRadius: 12,
+      borderWidth: 2,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    themeText: {
+      marginTop: 8,
+      fontWeight: 'bold',
+      fontSize: 12,
+    }
+  });
+
   return (
-    <SafeAreaView className="flex-1 bg-[#020617]" edges={['top']}>
-      <ScrollView className="flex-1 px-5">
+    <SafeAreaView style={styles.container} edges={['top']}>
+      <ScrollView style={{ flex: 1, paddingHorizontal: 20 }}>
         {/* Header */}
-        <View className="flex-row items-center mb-6 mt-4">
-          <TouchableOpacity onPress={() => router.back()} className="h-10 w-10 bg-slate-800 rounded-xl items-center justify-center mr-4">
-            <Ionicons name="arrow-back" size={20} color="#94a3b8" />
+        <View style={styles.header}>
+          <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
+            <Ionicons name="arrow-back" size={20} color={colors.textSecondary} />
           </TouchableOpacity>
-          <Text className="text-xl font-bold text-white">Settings</Text>
+          <Text style={styles.headerTitle}>Settings</Text>
         </View>
 
         {/* Security Section */}
-        <View className="mb-6">
-          <Text className="text-slate-500 text-xs font-bold mb-3">Security</Text>
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Security</Text>
           
-          <View className="bg-slate-900/50 rounded-xl border border-slate-800 overflow-hidden">
+          <View style={styles.card}>
             {/* Biometric Toggle */}
-            <View className="p-4 flex-row items-center border-b border-slate-800">
-              <View className="h-9 w-9 rounded-lg bg-slate-800 items-center justify-center mr-3">
+            <View style={styles.row}>
+              <View style={styles.rowIconContainer}>
                 <Ionicons 
                   name={biometricType === "Face ID" ? "scan" : "finger-print"} 
                   size={18} 
-                  color="#38bdf8" 
+                  color={colors.primary} 
                 />
               </View>
-              <View className="flex-1">
-                <Text className="text-white font-bold">{biometricType} Login</Text>
-                <Text className="text-slate-500 text-xs">
+              <View style={styles.rowContent}>
+                <Text style={styles.rowTitle}>{biometricType} Login</Text>
+                <Text style={styles.rowSubtitle}>
                   {biometricAvailable ? "Use biometric to open app" : "Not available on this device"}
                 </Text>
               </View>
@@ -138,142 +239,195 @@ export default function PreferencesScreen() {
                 value={biometricEnabled}
                 onValueChange={toggleBiometric}
                 disabled={!biometricAvailable}
-                trackColor={{ false: "#334155", true: "#0ea5e9" }}
-                thumbColor={biometricEnabled ? "#38bdf8" : "#64748b"}
+                trackColor={{ false: colors.textMuted, true: colors.primary }}
+                thumbColor={isDark ? "#fff" : "#fff"}
               />
             </View>
 
             {/* Test Biometric */}
             {biometricAvailable && (
               <TouchableOpacity 
-                className="p-4 flex-row items-center"
+                style={[styles.row, styles.lastRow]}
                 onPress={testBiometric}
               >
-                <View className="h-9 w-9 rounded-lg bg-slate-800 items-center justify-center mr-3">
-                  <Ionicons name="shield-checkmark" size={18} color="#10b981" />
+                <View style={styles.rowIconContainer}>
+                  <Ionicons name="shield-checkmark" size={18} color={colors.success} />
                 </View>
-                <View className="flex-1">
-                  <Text className="text-white font-bold">Test Biometric</Text>
-                  <Text className="text-slate-500 text-xs">Make sure it's working</Text>
+                <View style={styles.rowContent}>
+                  <Text style={styles.rowTitle}>Test Biometric</Text>
+                  <Text style={styles.rowSubtitle}>Make sure it's working</Text>
                 </View>
-                <Ionicons name="chevron-forward" size={18} color="#475569" />
+                <Ionicons name="chevron-forward" size={18} color={colors.textTertiary} />
               </TouchableOpacity>
             )}
           </View>
         </View>
 
         {/* Notifications Section */}
-        <View className="mb-6">
-          <Text className="text-slate-500 text-xs font-bold mb-3">Notifications</Text>
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Notifications</Text>
           
-          <View className="bg-slate-900/50 rounded-xl border border-slate-800 overflow-hidden">
-              <View className="p-4 flex-row items-center justify-between border-b border-slate-800">
-                <View className="flex-row items-center">
-                  <View className="h-8 w-8 rounded-lg bg-orange-500/10 items-center justify-center mr-3">
-                    <Ionicons name="notifications-outline" size={18} color="#f97316" />
-                  </View>
-                  <Text className="text-white ">Push Notifications</Text>
-                </View>
-                <Switch
-                  value={pushEnabled}
-                  onValueChange={togglePush}
-                  trackColor={{ false: "#334155", true: "#38bdf8" }}
-                  thumbColor={pushEnabled ? "#ffffff" : "#94a3b8"}
-                />
+          <View style={styles.card}>
+            <View style={styles.row}>
+              <View style={[styles.rowIconContainer, { backgroundColor: isDark ? 'rgba(249, 115, 22, 0.2)' : '#fff7ed' }]}>
+                <Ionicons name="notifications-outline" size={18} color={colors.warning} />
               </View>
-              
-              <TouchableOpacity 
-                className="p-4 flex-row items-center active:bg-slate-800"
-                onPress={async () => {
-                  const { status } = await Notifications.requestPermissionsAsync();
-                  if (status !== 'granted') {
-                    Alert.alert('Permission needed', 'Please enable notifications in settings');
-                    return;
-                  }
-                  await Notifications.scheduleNotificationAsync({
-                    content: {
-                      title: "Test Notification 🔔",
-                      body: "This is a test notification from SplitSahiSe!",
-                      data: { test: true },
-                    },
-                    trigger: null, // immediate
-                  });
-                }}
-              >
-                <View className="flex-row items-center flex-1">
-                  <View className="h-8 w-8 rounded-lg bg-blue-500/10 items-center justify-center mr-3">
-                    <Ionicons name="paper-plane-outline" size={18} color="#3b82f6" />
-                  </View>
-                  <Text className="text-blue-400 ">Test Push Notification</Text>
-                </View>
-                <Ionicons name="chevron-forward" size={16} color="#475569" />
-              </TouchableOpacity>
+              <View style={styles.rowContent}>
+                 <Text style={styles.rowTitle}>Push Notifications</Text>
+              </View>
+              <Switch
+                value={pushEnabled}
+                onValueChange={togglePush}
+                trackColor={{ false: colors.textMuted, true: colors.primary }}
+                thumbColor={"#ffffff"}
+              />
+            </View>
+            
+            <TouchableOpacity 
+              style={styles.row}
+              onPress={() => {
+                Alert.alert("Not Supported", "Push notifications are not supported in Expo Go.");
+              }}
+            >
+              <View style={[styles.rowIconContainer, { backgroundColor: isDark ? 'rgba(59, 130, 246, 0.2)' : '#eff6ff' }]}>
+                <Ionicons name="paper-plane-outline" size={18} color={colors.info} />
+              </View>
+              <View style={styles.rowContent}>
+                <Text style={[styles.rowTitle, { color: colors.info }]}>Test Push Notification</Text>
+              </View>
+              <Ionicons name="chevron-forward" size={16} color={colors.textTertiary} />
+            </TouchableOpacity>
 
-            <View className="p-4 flex-row items-center border-b border-slate-800">
-              <View className="h-9 w-9 rounded-lg bg-slate-800 items-center justify-center mr-3">
-                <Ionicons name="notifications" size={18} color="#818cf8" />
+            <View style={styles.row}>
+              <View style={styles.rowIconContainer}>
+                <Ionicons name="notifications" size={18} color={colors.accent} />
               </View>
-              <View className="flex-1">
-                <Text className="text-white font-bold">In-App Alerts</Text>
-                <Text className="text-slate-500 text-xs">Show alerts for expenses & payments</Text>
+              <View style={styles.rowContent}>
+                <Text style={styles.rowTitle}>In-App Alerts</Text>
+                <Text style={styles.rowSubtitle}>Show alerts for expenses & payments</Text>
               </View>
               <Switch
                 value={notificationsEnabled}
                 onValueChange={toggleNotifications}
-                trackColor={{ false: "#334155", true: "#6366f1" }}
-                thumbColor={notificationsEnabled ? "#818cf8" : "#64748b"}
+                trackColor={{ false: colors.textMuted, true: colors.primary }}
+                thumbColor={"#ffffff"}
               />
             </View>
 
-            <View className="p-4 flex-row items-center">
-              <View className="h-9 w-9 rounded-lg bg-slate-800 items-center justify-center mr-3">
-                <Ionicons name="mail" size={18} color="#475569" />
+            <View style={[styles.row, styles.lastRow]}>
+              <View style={styles.rowIconContainer}>
+                <Ionicons name="mail" size={18} color={colors.textSecondary} />
               </View>
-              <View className="flex-1">
-                <Text className="text-white font-bold">Email Summary</Text>
-                <Text className="text-slate-500 text-xs">Weekly activity recap</Text>
+              <View style={styles.rowContent}>
+                <Text style={styles.rowTitle}>Email Summary</Text>
+                <Text style={styles.rowSubtitle}>Weekly activity recap</Text>
               </View>
-              <View className="bg-slate-800 px-2.5 py-1 rounded-lg">
-                <Text className="text-slate-500 text-xs ">Coming Soon</Text>
+              <View style={{ backgroundColor: colors.surfaceActive, paddingHorizontal: 8, paddingVertical: 4, borderRadius: 6 }}>
+                <Text style={{ color: colors.textSecondary, fontSize: 10, fontWeight: 'bold' }}>Coming Soon</Text>
               </View>
             </View>
           </View>
         </View>
 
         {/* App Section */}
-        <View className="mb-6">
-          <Text className="text-slate-500 text-xs font-bold mb-3">Appearance</Text>
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Appearance</Text>
           
-          <View className="bg-slate-900/50 rounded-xl border border-slate-800 overflow-hidden">
-            <View className="p-4 flex-row items-center border-b border-slate-800">
-              <View className="h-9 w-9 rounded-lg bg-slate-800 items-center justify-center mr-3">
-                <Ionicons name="moon" size={18} color="#475569" />
-              </View>
-              <View className="flex-1">
-                <Text className="text-white font-bold">Dark Mode</Text>
-                <Text className="text-slate-500 text-xs">Always on</Text>
-              </View>
-              <View className="bg-emerald-500/20 px-2.5 py-1 rounded-lg">
-                <Text className="text-emerald-400 text-xs ">Active</Text>
+          <View style={styles.card}>
+            <View style={styles.themeContainer}>
+              <Text style={styles.rowTitle}>Theme</Text>
+              
+              <View style={styles.themeOptions}>
+                {/* System */}
+                <TouchableOpacity 
+                  onPress={() => setThemeMode("system")}
+                  style={[
+                    styles.themeOption,
+                    { 
+                      borderColor: themeMode === "system" ? colors.primary : colors.border,
+                      backgroundColor: themeMode === "system" ? (isDark ? 'rgba(56, 189, 248, 0.1)' : '#f0f9ff') : colors.surface
+                    }
+                  ]}
+                >
+                  <Ionicons 
+                    name="phone-portrait-outline" 
+                    size={24} 
+                    color={themeMode === "system" ? colors.primary : colors.textMuted} 
+                  />
+                  <Text style={[
+                    styles.themeText,
+                    { color: themeMode === "system" ? colors.primary : colors.textSecondary }
+                  ]}>
+                    System
+                  </Text>
+                </TouchableOpacity>
+
+                {/* Light */}
+                <TouchableOpacity 
+                  onPress={() => setThemeMode("light")}
+                  style={[
+                    styles.themeOption,
+                    { 
+                      borderColor: themeMode === "light" ? colors.primary : colors.border,
+                      backgroundColor: themeMode === "light" ? (isDark ? 'rgba(56, 189, 248, 0.1)' : '#f0f9ff') : colors.surface
+                    }
+                  ]}
+                >
+                  <Ionicons 
+                    name="sunny-outline" 
+                    size={24} 
+                    color={themeMode === "light" ? colors.primary : colors.textMuted} 
+                  />
+                  <Text style={[
+                    styles.themeText,
+                    { color: themeMode === "light" ? colors.primary : colors.textSecondary }
+                  ]}>
+                    Light
+                  </Text>
+                </TouchableOpacity>
+
+                {/* Dark */}
+                <TouchableOpacity 
+                  onPress={() => setThemeMode("dark")}
+                  style={[
+                    styles.themeOption,
+                    { 
+                      borderColor: themeMode === "dark" ? colors.primary : colors.border,
+                      backgroundColor: themeMode === "dark" ? (isDark ? 'rgba(56, 189, 248, 0.1)' : '#f0f9ff') : colors.surface
+                    }
+                  ]}
+                >
+                  <Ionicons 
+                    name="moon-outline" 
+                    size={24} 
+                    color={themeMode === "dark" ? colors.primary : colors.textMuted} 
+                  />
+                  <Text style={[
+                    styles.themeText,
+                    { color: themeMode === "dark" ? colors.primary : colors.textSecondary }
+                  ]}>
+                    Dark
+                  </Text>
+                </TouchableOpacity>
               </View>
             </View>
-
-            <View className="p-4 flex-row items-center">
-              <View className="h-9 w-9 rounded-lg bg-slate-800 items-center justify-center mr-3">
-                <Ionicons name="language" size={18} color="#475569" />
+            
+            <View style={[styles.row, styles.lastRow, { borderTopWidth: 1, borderTopColor: colors.border }]}>
+              <View style={styles.rowIconContainer}>
+                <Ionicons name="language" size={18} color={colors.textSecondary} />
               </View>
-              <View className="flex-1">
-                <Text className="text-white font-bold">Language</Text>
-                <Text className="text-slate-500 text-xs">English</Text>
+              <View style={styles.rowContent}>
+                <Text style={styles.rowTitle}>Language</Text>
+                <Text style={styles.rowSubtitle}>English</Text>
               </View>
-              <Ionicons name="chevron-forward" size={18} color="#334155" />
+              <Ionicons name="chevron-forward" size={18} color={colors.textTertiary} />
             </View>
           </View>
         </View>
 
         {/* Version */}
-        <View className="items-center py-8">
-          <Text className="text-slate-700 text-xs">SplitSahiSe v1.0.0</Text>
+        <View style={{ alignItems: 'center', marginVertical: 32 }}>
+          <Text style={{ color: colors.textMuted, fontSize: 12 }}>SplitSahiSe v1.0.0</Text>
         </View>
       </ScrollView>
     </SafeAreaView>

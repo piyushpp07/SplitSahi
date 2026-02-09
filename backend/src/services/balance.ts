@@ -23,11 +23,11 @@ export async function getNetBalancesForUser(userId: string, groupId?: string | n
     where: groupId
       ? { groupId }
       : {
-          OR: [
-            { participants: { some: { userId } } },
-            { group: { members: { some: { userId } } } },
-          ],
-        },
+        OR: [
+          { participants: { some: { userId } } },
+          { group: { members: { some: { userId } } } },
+        ],
+      },
     include: {
       payers: true,
       splits: true,
@@ -42,7 +42,7 @@ export async function getNetBalancesForUser(userId: string, groupId?: string | n
     // - what each user paid
     // - what each user owes (from splits)
     // Net for this expense = paid - owed
-    
+
     for (const payer of exp.payers) {
       const paid = toNum(payer.amountPaid);
       netMap.set(payer.userId, (netMap.get(payer.userId) ?? 0) + paid);
@@ -79,33 +79,35 @@ export async function getNetBalancesForUser(userId: string, groupId?: string | n
   return result;
 }
 
-/**
- * Get simplified "who should pay whom" for a group or global.
- */
 export async function getSimplifiedTransactions(
-  _userId: string,
+  userId: string,
   groupId?: string | null
 ): Promise<SimplifiedTransaction[]> {
-  const balances = await getNetBalancesForUser(_userId, groupId);
-  return simplifyDebts(balances);
+  const balances = await getNetBalancesForUser(userId, groupId);
+
+  // We use debt simplification regardless of group/global
+  // to ensure that complex multi-payer expenses are handled correctly.
+  const allSimplified = simplifyDebts(balances);
+
+  // BUT we strictly filter to ONLY show transactions where this user is involved.
+  // This prevents Piyush from seeing "Akhil owes Vinay".
+  return allSimplified.filter(t => t.fromUserId === userId || t.toUserId === userId);
 }
 
 /**
  * Dashboard: total you owe, total you are owed.
- * Based on simplified transactions:
- * - youOwe = sum of amounts where you are the fromUser
- * - youAreOwed = sum of amounts where you are the toUser
  */
 export async function getDashboardTotals(userId: string, groupId?: string | null): Promise<{
   youOwe: number;
   youAreOwed: number;
   simplifiedTransactions: SimplifiedTransaction[];
 }> {
+  // Pass the userId to ensure we only get relevant transactions
   const simplifiedTransactions = await getSimplifiedTransactions(userId, groupId);
-  
+
   let youOwe = 0;
   let youAreOwed = 0;
-  
+
   for (const t of simplifiedTransactions) {
     if (t.fromUserId === userId) {
       youOwe += t.amount;

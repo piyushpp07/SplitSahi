@@ -1,10 +1,11 @@
-import { useRef, useCallback } from "react";
-import { View, Text, FlatList, TouchableOpacity, RefreshControl } from "react-native";
+import { useCallback } from "react";
+import { View, Text, FlatList, TouchableOpacity, RefreshControl, StyleSheet } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { router, useFocusEffect } from "expo-router";
 import { useQuery } from "@tanstack/react-query";
 import { apiGet } from "@/lib/api";
 import { Ionicons } from "@expo/vector-icons";
+import { useTheme } from "@/contexts/ThemeContext";
 
 interface Group {
   id: string;
@@ -14,7 +15,8 @@ interface Group {
 }
 
 export default function GroupsScreen() {
-  const { data: groups, isLoading, error, refetch, isFetching } = useQuery({
+  const { colors } = useTheme();
+  const { data: groups, isLoading, isFetching, refetch } = useQuery({
     queryKey: ["groups"],
     queryFn: () => apiGet<Group[]>("/groups"),
   });
@@ -25,69 +27,227 @@ export default function GroupsScreen() {
     }, [])
   );
 
+  const styles = StyleSheet.create({
+    container: {
+      flex: 1,
+      backgroundColor: colors.background,
+    },
+    loadingContainer: {
+      flex: 1,
+      backgroundColor: colors.background,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    header: {
+      marginBottom: 24,
+      marginTop: 16,
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+    },
+    headerTitle: {
+      fontSize: 24,
+      fontWeight: 'bold',
+      color: colors.text,
+    },
+    headerSubtitle: {
+      fontSize: 14,
+      color: colors.textSecondary,
+    },
+    joinBtn: {
+      backgroundColor: colors.surface,
+      height: 40,
+      paddingHorizontal: 16,
+      borderRadius: 12,
+      alignItems: 'center',
+      justifyContent: 'center',
+      flexDirection: 'row',
+      borderWidth: 1,
+      borderColor: colors.border,
+    },
+    joinBtnText: {
+      color: colors.primary,
+      fontWeight: 'bold',
+      fontSize: 14,
+      marginLeft: 6,
+    },
+    createBtn: {
+      backgroundColor: colors.primary,
+      height: 40,
+      width: 40,
+      borderRadius: 12,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    groupCard: {
+      backgroundColor: colors.surface,
+      borderRadius: 16,
+      padding: 16,
+      marginBottom: 12,
+      borderWidth: 1,
+      borderColor: colors.border,
+      flexDirection: 'row',
+      alignItems: 'center',
+    },
+    groupIcon: {
+      height: 48,
+      width: 48,
+      borderRadius: 16,
+      backgroundColor: colors.surfaceActive,
+      alignItems: 'center',
+      justifyContent: 'center',
+      marginRight: 16,
+    },
+    groupName: {
+      color: colors.text,
+      fontWeight: 'bold',
+      fontSize: 16,
+    },
+    groupDesc: {
+      color: colors.textSecondary,
+      fontSize: 14,
+    },
+    memberCount: {
+      color: colors.textTertiary,
+      fontSize: 12,
+      marginTop: 4,
+    },
+    emptyState: {
+      paddingVertical: 64,
+      backgroundColor: colors.surface,
+      borderRadius: 24,
+      borderWidth: 1,
+      borderColor: colors.border,
+      borderStyle: 'dashed',
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    emptyIcon: {
+      backgroundColor: colors.surfaceActive,
+      padding: 24,
+      borderRadius: 50,
+      marginBottom: 16,
+    },
+    emptyTitle: {
+      color: colors.text,
+      fontWeight: 'bold',
+      fontSize: 16,
+    },
+    emptyText: {
+      color: colors.textSecondary,
+      fontSize: 14,
+      marginTop: 4,
+    },
+    emptyActions: {
+      flexDirection: 'row',
+      gap: 12,
+      marginTop: 24,
+    },
+    emptyJoinBtn: {
+      backgroundColor: colors.surface,
+      paddingHorizontal: 20,
+      paddingVertical: 12,
+      borderRadius: 12,
+      flexDirection: 'row',
+      alignItems: 'center',
+      borderWidth: 1,
+      borderColor: colors.border,
+    },
+    emptyCreateBtn: {
+      backgroundColor: colors.primary,
+      paddingHorizontal: 20,
+      paddingVertical: 12,
+      borderRadius: 12,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    emptyCreateText: {
+      color: '#fff',
+      fontWeight: 'bold',
+    }
+  });
+
   if (isLoading) {
     return (
-      <View className="flex-1 bg-[#020617] items-center justify-center">
-        <Text className="text-slate-400">Loading groups...</Text>
+      <View style={styles.loadingContainer}>
+        <Text style={{ color: colors.textSecondary }}>Loading groups...</Text>
       </View>
     );
   }
 
   return (
-    <SafeAreaView className="flex-1 bg-[#020617]" edges={['top']}>
+    <SafeAreaView style={styles.container} edges={['top']}>
       <FlatList
         data={groups ?? []}
         contentContainerStyle={{ padding: 20, paddingBottom: 120 }}
         keyExtractor={(item) => item.id}
         showsVerticalScrollIndicator={false}
         refreshControl={
-          <RefreshControl refreshing={isFetching} onRefresh={refetch} tintColor="#38bdf8" />
+          <RefreshControl refreshing={isFetching} onRefresh={refetch} tintColor={colors.primary} />
         }
         ListHeaderComponent={
-          <View className="mb-6 mt-4 flex-row items-center justify-between">
+          <View style={styles.header}>
             <View>
-              <Text className="text-2xl font-bold text-white">Groups</Text>
-              <Text className="text-slate-500 text-sm">Manage your shared expenses</Text>
+              <Text style={styles.headerTitle}>Groups</Text>
+              <Text style={styles.headerSubtitle}>Manage your shared expenses</Text>
             </View>
-            <TouchableOpacity 
-              onPress={() => router.push("/new/group")}
-              className="bg-primary h-10 w-10 rounded-xl items-center justify-center"
-            >
-              <Ionicons name="add" size={22} color="#020617" />
-            </TouchableOpacity>
+            <View style={{ flexDirection: 'row', gap: 8 }}>
+              <TouchableOpacity 
+                onPress={() => router.push("/join-group")}
+                style={styles.joinBtn}
+              >
+                <Ionicons name="enter" size={18} color={colors.primary} />
+                <Text style={styles.joinBtnText}>Join</Text>
+              </TouchableOpacity>
+              <TouchableOpacity 
+                onPress={() => router.push("/new/group")}
+                style={styles.createBtn}
+              >
+                <Ionicons name="add" size={22} color="#fff" />
+              </TouchableOpacity>
+            </View>
           </View>
         }
         ListEmptyComponent={
-          <View className="py-16 bg-slate-900/50 rounded-2xl border border-dashed border-slate-800 items-center justify-center">
-            <View className="bg-slate-800/50 p-5 rounded-full mb-4">
-              <Ionicons name="people-outline" size={32} color="#475569" />
+          <View style={styles.emptyState}>
+            <View style={styles.emptyIcon}>
+              <Ionicons name="people-outline" size={32} color={colors.textSecondary} />
             </View>
-            <Text className="text-slate-400 font-bold">No groups yet</Text>
-            <Text className="text-slate-600 text-sm mt-1">Create a group to start splitting</Text>
-            <TouchableOpacity 
-              onPress={() => router.push("/new/group")}
-              className="mt-4 bg-primary px-5 py-2.5 rounded-xl"
-            >
-              <Text className="text-[#020617] font-bold">Create Group</Text>
-            </TouchableOpacity>
+            <Text style={styles.emptyTitle}>No groups yet</Text>
+            <Text style={styles.emptyText}>Create a group to start splitting</Text>
+            <View style={styles.emptyActions}>
+              <TouchableOpacity 
+                onPress={() => router.push("/join-group")}
+                style={styles.emptyJoinBtn}
+              >
+                <Ionicons name="enter" size={18} color={colors.primary} />
+                <Text style={styles.joinBtnText}>Join Group</Text>
+              </TouchableOpacity>
+              <TouchableOpacity 
+                onPress={() => router.push("/new/group")}
+                style={styles.emptyCreateBtn}
+              >
+                <Text style={styles.emptyCreateText}>Create Group</Text>
+              </TouchableOpacity>
+            </View>
           </View>
         }
         renderItem={({ item }) => (
           <TouchableOpacity 
             onPress={() => router.push(`/group/${item.id}`)}
-            className="bg-slate-900/50 rounded-xl p-4 mb-3 border border-slate-800 flex-row items-center"
+            style={styles.groupCard}
           >
-            <View className="h-12 w-12 rounded-xl bg-indigo-500/20 items-center justify-center mr-4">
-              <Ionicons name="people" size={22} color="#818cf8" />
+            <View style={styles.groupIcon}>
+              <Ionicons name="people" size={22} color={colors.primary} />
             </View>
-            <View className="flex-1">
-              <Text className="text-white font-bold text-base">{item.name}</Text>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.groupName}>{item.name}</Text>
               {item.description && (
-                <Text className="text-slate-500 text-sm" numberOfLines={1}>{item.description}</Text>
+                <Text style={styles.groupDesc} numberOfLines={1}>{item.description}</Text>
               )}
-              <Text className="text-slate-600 text-xs mt-1">{item.members.length} members</Text>
+              <Text style={styles.memberCount}>{item.members.length} members</Text>
             </View>
-            <Ionicons name="chevron-forward" size={18} color="#475569" />
+            <Ionicons name="chevron-forward" size={18} color={colors.textTertiary} />
           </TouchableOpacity>
         )}
       />

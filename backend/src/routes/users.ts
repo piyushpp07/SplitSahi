@@ -26,7 +26,11 @@ usersRouter.patch(
   "/me",
   body("name").optional().trim().notEmpty(),
   body("phone").optional().trim(),
-  body("upiId").optional().trim(),
+  body("upiId")
+    .optional()
+    .trim()
+    .matches(/^[a-zA-Z0-9.\-_]{2,256}@[a-zA-Z]{2,64}$/)
+    .withMessage("Invalid UPI ID format (e.g., name@bank)"),
   body("avatarUrl").optional().trim(),
   async (req: AuthRequest, res, next) => {
     try {

@@ -1,17 +1,20 @@
 import { useState, useCallback } from "react";
-import { View, Text, ScrollView, TouchableOpacity, Alert, ActivityIndicator, KeyboardAvoidingView, Platform } from "react-native";
+import { View, Text, ScrollView, TouchableOpacity, Alert, ActivityIndicator, KeyboardAvoidingView, Platform, LayoutAnimation, StyleSheet, Linking } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useLocalSearchParams, router, useFocusEffect } from "expo-router";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiGet, apiDelete } from "@/lib/api";
 import { Ionicons } from "@expo/vector-icons";
 import { useAuthStore } from "@/store/authStore";
-import * as Clipboard from 'expo-clipboard';
+import ShareInvite from "@/components/ShareInvite";
+import { useTheme } from "@/contexts/ThemeContext";
+import Avatar from "@/components/Avatar";
 
 interface Group {
   id: string;
   name: string;
   description?: string;
+  imageUrl?: string;
   createdById: string;
   members: Array<{ userId: string; role: string; user: { id: string; name: string; email: string; avatarUrl?: string } }>;
 }
@@ -26,6 +29,7 @@ interface Expense {
 }
 
 export default function GroupDetailScreen() {
+  const { colors, isDark } = useTheme();
   const { id } = useLocalSearchParams<{ id: string }>();
   const queryClient = useQueryClient();
   const currentUserId = useAuthStore((s) => s.user?.id);
@@ -50,6 +54,29 @@ export default function GroupDetailScreen() {
     queryFn: () => apiGet<Expense[]>(`/expenses?groupId=${id}`),
     enabled: !!id,
   });
+
+  async function handleExportPDF() {
+    if (!group || !expenses) return;
+    try {
+      const { generateGroupPDF } = await import("@/lib/pdfReport");
+      const total = expenses.reduce((s, e) => s + Number(e.totalAmount), 0).toFixed(0);
+      
+      await generateGroupPDF({
+        groupName: group.name,
+        totalExpenses: total,
+        members: group.members.map(m => ({ name: m.user.name, email: m.user.email })),
+        expenses: expenses.map(e => ({
+          title: e.title,
+          category: e.category,
+          amount: Number(e.totalAmount).toFixed(0),
+          date: new Date(e.createdAt).toLocaleDateString('en-IN'),
+          creator: e.creator.name
+        }))
+      });
+    } catch (e) {
+      Alert.alert("Error", "Failed to generate report");
+    }
+  }
 
   const deleteMutation = useMutation({
     mutationFn: () => apiDelete(`/groups/${id}`),
@@ -93,82 +120,90 @@ export default function GroupDetailScreen() {
     ]);
   }
 
-  async function handleInvite() {
-    await Clipboard.setStringAsync(`Join my group "${group?.name}" on SplitSahiSe! Code: ${group?.id}`);
-    Alert.alert("Copied!", "Group invite code copied to clipboard.");
-  }
-
-  if (isLoading) return <View className="flex-1 bg-[#020617] items-center justify-center"><ActivityIndicator color="#38bdf8" /></View>;
-  if (!group) return <View className="flex-1 bg-[#020617] items-center justify-center"><Text className="text-white">Group not found</Text></View>;
+  if (isLoading) return <View style={{ flex: 1, backgroundColor: colors.background, alignItems: 'center', justifyContent: 'center' }}><ActivityIndicator color={colors.primary} /></View>;
+  if (!group) return <View style={{ flex: 1, backgroundColor: colors.background, alignItems: 'center', justifyContent: 'center' }}><Text style={{ color: colors.text }}>Group not found</Text></View>;
 
   return (
-    <SafeAreaView className="flex-1 bg-[#020617]" edges={['top']}>
+    <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }} edges={['top']}>
       <KeyboardAvoidingView 
         behavior={Platform.OS === "ios" ? "padding" : "height"}
-        className="flex-1"
+        style={{ flex: 1 }}
       >
-        <ScrollView className="flex-1" contentContainerStyle={{ padding: 20, paddingBottom: 100 }} showsVerticalScrollIndicator={false}>
+        <ScrollView style={{ flex: 1 }} contentContainerStyle={{ padding: 20, paddingBottom: 100 }} showsVerticalScrollIndicator={false}>
           {/* Header */}
-          <View className="flex-row items-center justify-between mb-6 mt-2">
-            <TouchableOpacity onPress={() => router.back()} className="h-10 w-10 bg-slate-800 rounded-xl items-center justify-center">
-              <Ionicons name="arrow-back" size={20} color="#94a3b8" />
+          <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 24, marginTop: 8 }}>
+            <TouchableOpacity onPress={() => router.back()} style={{ backgroundColor: colors.surface, padding: 10, borderRadius: 12 }}>
+              <Ionicons name="arrow-back" size={20} color={colors.textSecondary} />
             </TouchableOpacity>
-            <View className="flex-row gap-3">
-              <TouchableOpacity onPress={handleInvite} className="h-10 w-10 bg-slate-800 rounded-xl items-center justify-center">
-                <Ionicons name="share-outline" size={20} color="#38bdf8" />
-              </TouchableOpacity>
+            <View style={{ flexDirection: 'row', gap: 12 }}>
+              <ShareInvite groupId={group.id} groupName={group.name} inviteCode={group.id} />
               {isAdmin && (
-                <TouchableOpacity onPress={handleDelete} className="h-10 w-10 bg-red-500/10 rounded-xl items-center justify-center">
-                  <Ionicons name="trash-outline" size={20} color="#f87171" />
+                <TouchableOpacity onPress={handleDelete} style={{ backgroundColor: '#fee2e2', padding: 10, borderRadius: 12 }}>
+                  <Ionicons name="trash-outline" size={20} color="#ef4444" />
                 </TouchableOpacity>
               )}
             </View>
           </View>
 
-          <View className="items-center mb-8">
-            <View className="h-20 w-20 rounded-2xl bg-slate-800 items-center justify-center mb-4">
-              <Ionicons name="people" size={32} color="#818cf8" />
-            </View>
-            <Text className="text-2xl font-bold text-white text-center mb-1">{group.name}</Text>
-            <Text className="text-slate-500 text-sm text-center px-10">
+          <View style={{ alignItems: 'center', marginBottom: 32 }}>
+            <Avatar url={group.imageUrl} name={group.name} size={80} style={{ marginBottom: 16 }} />
+            <Text style={{ fontSize: 24, fontWeight: 'bold', color: colors.text, textAlign: 'center', marginBottom: 4 }}>{group.name}</Text>
+            <Text style={{ color: colors.textSecondary, fontSize: 14, textAlign: 'center', paddingHorizontal: 40 }}>
               {group.description || "No description"}
             </Text>
           </View>
 
           {/* Quick Stats */}
-          <View className="flex-row gap-3 mb-6">
-            <View className="flex-1 bg-slate-900/50 rounded-xl p-4 border border-slate-800">
-              <Text className="text-slate-500 text-xs font-bold mb-1">Members</Text>
-              <Text className="text-white font-bold text-xl">{group.members.length}</Text>
+          <View style={{ flexDirection: 'row', gap: 12, marginBottom: 24 }}>
+            <View style={{ flex: 1, backgroundColor: colors.surface, borderRadius: 16, padding: 12, borderWidth: 1, borderColor: colors.border }}>
+              <Text style={{ color: colors.textSecondary, fontSize: 10, fontWeight: 'bold', marginBottom: 4 }}>Members</Text>
+              <Text style={{ color: colors.text, fontWeight: 'bold', fontSize: 18 }}>{group.members.length}</Text>
             </View>
-            <View className="flex-1 bg-slate-900/50 rounded-xl p-4 border border-slate-800">
-              <Text className="text-slate-500 text-xs font-bold mb-1">Expenses</Text>
-              <Text className="text-white font-bold text-xl">{expenses?.length || 0}</Text>
+            <View style={{ flex: 1, backgroundColor: colors.surface, borderRadius: 16, padding: 12, borderWidth: 1, borderColor: colors.border }}>
+              <Text style={{ color: colors.textSecondary, fontSize: 10, fontWeight: 'bold', marginBottom: 4 }}>Expenses</Text>
+              <Text style={{ color: colors.text, fontWeight: 'bold', fontSize: 18 }}>{expenses?.length || 0}</Text>
             </View>
+            <TouchableOpacity 
+              onPress={handleExportPDF}
+              style={{ flex: 1.2, backgroundColor: colors.primary + '10', borderRadius: 16, padding: 12, borderWidth: 1, borderColor: colors.primary + '30', alignItems: 'center', justifyContent: 'center' }}
+            >
+              <Ionicons name="document-text" size={20} color={colors.primary} />
+              <Text style={{ color: colors.primary, fontWeight: 'bold', fontSize: 10, marginTop: 4 }}>Export Report</Text>
+            </TouchableOpacity>
           </View>
 
           {/* Members Section */}
           <TouchableOpacity 
-            className="bg-slate-900/50 rounded-xl p-4 border border-slate-800 flex-row items-center mb-3"
-            onPress={() => setShowMembers(!showMembers)}
+            style={{ 
+              backgroundColor: colors.surface, 
+              borderRadius: 16, 
+              padding: 16, 
+              borderWidth: 1, 
+              borderColor: colors.border, 
+              flexDirection: 'row', 
+              alignItems: 'center', 
+              marginBottom: 12 
+            }}
+            onPress={() => {
+              LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+              setShowMembers(!showMembers);
+            }}
           >
-            <Ionicons name="people" size={18} color="#94a3b8" />
-            <Text className="text-white font-bold text-sm flex-1 ml-3">Members</Text>
-            <Ionicons name={showMembers ? "chevron-up" : "chevron-down"} size={16} color="#475569" />
+            <Ionicons name="people" size={18} color={colors.textSecondary} />
+            <Text style={{ color: colors.text, fontWeight: 'bold', fontSize: 14, flex: 1, marginLeft: 12 }}>Members</Text>
+            <Ionicons name={showMembers ? "chevron-up" : "chevron-down"} size={16} color={colors.textTertiary} />
           </TouchableOpacity>
 
           {showMembers && (
-            <View className="bg-slate-900/20 rounded-xl p-2 mb-4 gap-1">
+            <View style={{ backgroundColor: colors.surfaceActive, borderRadius: 16, padding: 8, marginBottom: 16, gap: 4 }}>
               {group.members.map((m) => (
-                <View key={m.userId} className="p-3 flex-row items-center border-b border-slate-800 last:border-0">
-                  <View className="h-8 w-8 rounded-lg bg-slate-800 items-center justify-center mr-3">
-                    <Text className="text-xs text-white font-bold">{m.user.name[0]}</Text>
-                  </View>
-                  <Text className="text-white  flex-1 text-sm">{m.user.name}</Text>
-                  <Text className={`text-xs font-bold mr-3 ${m.role === 'ADMIN' ? 'text-primary' : 'text-slate-500'}`}>{m.role === 'ADMIN' ? 'Admin' : 'Member'}</Text>
+                <View key={m.userId} style={{ padding: 12, flexDirection: 'row', alignItems: 'center', borderBottomWidth: 1, borderBottomColor: colors.border }}>
+                  <Avatar url={m.user.avatarUrl} name={m.user.name} size={32} style={{ marginRight: 12 }} />
+                  <Text style={{ color: colors.text, flex: 1, fontSize: 14 }}>{m.user.name}</Text>
+                  <Text style={{ fontSize: 12, fontWeight: 'bold', marginRight: 12, color: m.role === 'ADMIN' ? colors.primary : colors.textSecondary }}>{m.role === 'ADMIN' ? 'Admin' : 'Member'}</Text>
                   {isAdmin && m.userId !== currentUserId && (
                     <TouchableOpacity onPress={() => removeMemberMutation.mutate(m.userId)}>
-                      <Ionicons name="close-circle" size={18} color="#f87171" />
+                      <Ionicons name="close-circle" size={18} color={colors.error} />
                     </TouchableOpacity>
                   )}
                 </View>
@@ -178,38 +213,50 @@ export default function GroupDetailScreen() {
 
           {/* Expenses Section */}
           <TouchableOpacity 
-            className="bg-slate-900/50 rounded-xl p-4 border border-slate-800 flex-row items-center mb-3"
-            onPress={() => setShowExpenses(!showExpenses)}
+            style={{ 
+              backgroundColor: colors.surface, 
+              borderRadius: 16, 
+              padding: 16, 
+              borderWidth: 1, 
+              borderColor: colors.border, 
+              flexDirection: 'row', 
+              alignItems: 'center', 
+              marginBottom: 12 
+            }}
+            onPress={() => {
+              LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+              setShowExpenses(!showExpenses);
+            }}
           >
-            <Ionicons name="receipt" size={18} color="#94a3b8" />
-            <Text className="text-white font-bold text-sm flex-1 ml-3">Expenses</Text>
-            <Ionicons name={showExpenses ? "chevron-up" : "chevron-down"} size={16} color="#475569" />
+            <Ionicons name="receipt" size={18} color={colors.textSecondary} />
+            <Text style={{ color: colors.text, fontWeight: 'bold', fontSize: 14, flex: 1, marginLeft: 12 }}>Expenses</Text>
+            <Ionicons name={showExpenses ? "chevron-up" : "chevron-down"} size={16} color={colors.textTertiary} />
           </TouchableOpacity>
 
           {showExpenses && (
-            <View className="bg-slate-900/20 rounded-xl p-2 mb-4">
+            <View style={{ backgroundColor: colors.surfaceActive, borderRadius: 16, padding: 8, marginBottom: 16 }}>
               {expenses && expenses.length > 0 ? (
-                <View className="gap-2">
+                <View style={{ gap: 8 }}>
                   {expenses.map((exp) => (
                     <TouchableOpacity 
                       key={exp.id} 
-                      className="p-3 flex-row items-center bg-slate-900/40 rounded-lg border border-slate-800"
+                      style={{ padding: 12, flexDirection: 'row', alignItems: 'center', backgroundColor: colors.surface, borderRadius: 12, borderWidth: 1, borderColor: colors.border }}
                       onPress={() => router.push(`/expense/${exp.id}`)}
                     >
-                      <View className="flex-1">
-                        <Text className="text-white font-bold text-sm" numberOfLines={1}>{exp.title}</Text>
-                        <Text className="text-slate-500 text-xs mt-0.5">
+                      <View style={{ flex: 1 }}>
+                        <Text style={{ color: colors.text, fontWeight: 'bold', fontSize: 14 }} numberOfLines={1}>{exp.title}</Text>
+                        <Text style={{ color: colors.textSecondary, fontSize: 12, marginTop: 2 }}>
                           {exp.creator?.name} • {exp.category}
                         </Text>
                       </View>
-                      <View className="items-end">
-                        <Text className="text-white font-bold text-sm">₹{Number(exp.totalAmount).toFixed(0)}</Text>
+                      <View style={{ alignItems: 'flex-end' }}>
+                        <Text style={{ color: colors.text, fontWeight: 'bold', fontSize: 14 }}>₹{Number(exp.totalAmount).toFixed(0)}</Text>
                         {(exp.creator?.id === currentUserId || isAdmin) && (
                           <TouchableOpacity 
                             onPress={() => handleDeleteExpense(exp.id, exp.title)}
-                            className="mt-1 px-2 py-0.5"
+                            style={{ marginTop: 4, paddingHorizontal: 8, paddingVertical: 2 }}
                             >
-                            <Text className="text-red-400 text-[10px] ">Delete</Text>
+                            <Text style={{ color: colors.error, fontSize: 10 }}>Delete</Text>
                           </TouchableOpacity>
                         )}
                       </View>
@@ -217,87 +264,138 @@ export default function GroupDetailScreen() {
                   ))}
                 </View>
               ) : (
-                <View className="p-6 items-center">
-                  <Text className="text-slate-500 text-sm">No expenses yet</Text>
+                <View style={{ padding: 24, alignItems: 'center' }}>
+                  <Text style={{ color: colors.textSecondary, fontSize: 14 }}>No expenses yet</Text>
                 </View>
               )}
             </View>
           )}
 
           {/* Action Buttons */}
-          <View className="flex-row gap-3 mt-4">
+          <View style={{ flexDirection: 'row', gap: 12, marginTop: 16 }}>
             <TouchableOpacity 
-              className="flex-1 bg-primary rounded-xl h-12 items-center justify-center"
+              style={{ flex: 1, backgroundColor: colors.primary, borderRadius: 16, height: 48, alignItems: 'center', justifyContent: 'center' }}
               onPress={() => router.push({ pathname: "/new/expense", params: { groupId: group.id } })}
             >
-              <Text className="text-[#020617] font-bold text-sm">Add Expense</Text>
+              <Text style={{ color: '#fff', fontWeight: 'bold', fontSize: 14 }}>Add Expense</Text>
             </TouchableOpacity>
 
             <TouchableOpacity 
-              className="flex-1 bg-slate-800 rounded-xl h-12 items-center justify-center border border-slate-700"
+              style={{ flex: 1, backgroundColor: colors.surface, borderRadius: 16, height: 48, alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: colors.border }}
               onPress={() => router.push({ pathname: "/new/settlement", params: { groupId: group.id } })}
             >
-              <Text className="text-white font-bold text-sm">Settle Up</Text>
+              <Text style={{ color: colors.text, fontWeight: 'bold', fontSize: 14 }}>Settle Up</Text>
             </TouchableOpacity>
           </View>
 
           {/* Balance Section */}
-          <GroupBalances groupId={group.id} />
+          <GroupBalances groupId={group.id} groupData={group} />
         </ScrollView>
       </KeyboardAvoidingView>
     </SafeAreaView>
   );
 }
 
-function GroupBalances({ groupId }: { groupId: string }) {
+function GroupBalances({ groupId, groupData }: { groupId: string, groupData: Group }) {
+  const { colors } = useTheme();
+  const currentUserId = useAuthStore((s) => s.user?.id);
+  const [showAll, setShowAll] = useState(false);
+  const isAdmin = groupData.members.find(m => m.userId === currentUserId)?.role === "ADMIN";
+  
   const { data } = useQuery({
     queryKey: ["dashboard", groupId],
     queryFn: () => apiGet<any>(`/dashboard?groupId=${groupId}`),
   });
 
-  const transactions = data?.simplifiedTransactions || [];
+  const allTransactions = data?.simplifiedTransactions || [];
   const youOwe = data?.youOwe || 0;
   const youAreOwed = data?.youAreOwed || 0;
 
+  const relevantTransactions = allTransactions.filter((t: any) => 
+    t.fromUserId === currentUserId || t.toUserId === currentUserId
+  );
+
+  const transactions = showAll ? allTransactions : relevantTransactions;
+
   return (
-    <View className="mt-8">
+    <View style={{ marginTop: 32 }}>
       {/* Balance Summary */}
-      <View className="flex-row gap-3 mb-6">
-        <View className="flex-1 bg-red-500/10 rounded-xl p-4 border border-red-500/20">
-          <Text className="text-red-400 text-xs font-bold mb-1">You Owe</Text>
-          <Text className="text-red-400 font-bold text-xl">₹{youOwe.toFixed(0)}</Text>
+      <View style={{ flexDirection: 'row', gap: 12, marginBottom: 24 }}>
+        <View style={{ flex: 1, backgroundColor: colors.errorLight, borderRadius: 16, padding: 16, borderWidth: 1, borderColor: colors.error }}>
+          <Text style={{ color: colors.error, fontSize: 12, fontWeight: 'bold', marginBottom: 4 }}>You Owe</Text>
+          <Text style={{ color: colors.error, fontWeight: 'bold', fontSize: 20 }}>₹{youOwe.toFixed(0)}</Text>
         </View>
-        <View className="flex-1 bg-emerald-500/10 rounded-xl p-4 border border-emerald-500/20">
-          <Text className="text-emerald-400 text-xs font-bold mb-1">You Get</Text>
-          <Text className="text-emerald-400 font-bold text-xl">₹{youAreOwed.toFixed(0)}</Text>
+        <View style={{ flex: 1, backgroundColor: colors.successLight, borderRadius: 16, padding: 16, borderWidth: 1, borderColor: colors.success }}>
+          <Text style={{ color: colors.success, fontSize: 12, fontWeight: 'bold', marginBottom: 4 }}>You Get</Text>
+          <Text style={{ color: colors.success, fontWeight: 'bold', fontSize: 20 }}>₹{youAreOwed.toFixed(0)}</Text>
         </View>
       </View>
 
-      {transactions.length > 0 && (
+      {allTransactions.length > 0 && (
         <>
-          <Text className="text-slate-500 font-bold text-xs mb-3">Who owes who</Text>
-          <View className="gap-2">
-            {transactions.map((t: any, i: number) => (
-              <View key={i} className="bg-slate-900/50 rounded-xl p-4 border border-slate-800 flex-row items-center">
-                <View className="flex-1">
-                  <View className="flex-row items-center flex-wrap">
-                    <Text className="text-white  text-sm">{t.fromUser?.name}</Text>
-                    <Text className="text-slate-500 text-xs mx-2">owes</Text>
-                    <Text className="text-white  text-sm">{t.toUser?.name}</Text>
-                  </View>
-                  <Text className="text-emerald-400 font-bold text-sm mt-1">₹{t.amount.toFixed(2)}</Text>
+          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+            <Text style={{ color: colors.textSecondary, fontWeight: 'bold', fontSize: 14 }}>
+              {showAll ? "All Group Settlements" : "Your Settlements"}
+            </Text>
+            {isAdmin && allTransactions.length > relevantTransactions.length && (
+              <TouchableOpacity onPress={() => setShowAll(!showAll)}>
+                <Text style={{ color: colors.primary, fontSize: 12, fontWeight: 'bold' }}>
+                  {showAll ? "Show Less" : "Show All (Admin)"}
+                </Text>
+              </TouchableOpacity>
+            )}
+          </View>
+          
+          <View style={{ gap: 8 }}>
+            {transactions.map((t: any, i: number) => {
+               const isOwedToMe = t.toUserId === currentUserId;
+               const isOwedByMe = t.fromUserId === currentUserId;
+
+               return (
+              <View key={i} style={{ backgroundColor: colors.surface, borderRadius: 16, padding: 16, borderWidth: 1, borderColor: colors.border, flexDirection: 'row', alignItems: 'center' }}>
+                <View style={{ flex: 1 }}>
+                  <Text style={{ color: colors.text, fontSize: 14 }}>
+                      <Text style={{ fontWeight: 'bold' }}>{t.fromUserId === currentUserId ? "You" : t.fromUser?.name}</Text> 
+                      {" " + (t.fromUserId === currentUserId ? "owe" : "owes") + " "}
+                      <Text style={{ fontWeight: 'bold' }}>{t.toUserId === currentUserId ? "You" : t.toUser?.name}</Text>
+                  </Text>
+                  <Text style={{ color: colors.success, fontWeight: 'bold', fontSize: 14, marginTop: 4 }}>₹{t.amount.toFixed(2)}</Text>
                 </View>
-                <TouchableOpacity 
-                  className="bg-slate-800 px-4 py-2 rounded-lg"
-                  onPress={() => router.push({
-                    pathname: "/new/settlement",
-                    params: { toUserId: t.toUserId, amount: t.amount.toString(), groupId }
-                  })}
-                >
-                  <Text className="text-white font-bold text-xs">Settle</Text>
-                </TouchableOpacity>
+                
+                <View style={{ gap: 8 }}> 
+                    {isOwedToMe && (
+                        <TouchableOpacity 
+                        style={{ backgroundColor: colors.primary, paddingHorizontal: 12, paddingVertical: 6, borderRadius: 8 }}
+                        onPress={async () => {
+                            const personToRemind = t.fromUser;
+                            const text = `Hi ${personToRemind?.name}, reminder to pay ₹${t.amount} in group.`;
+                            const url = `whatsapp://send?text=${encodeURIComponent(text)}`;
+                             try { await Linking.openURL(url); } catch { Alert.alert("Reminder", text); }
+                        }}
+                        >
+                        <Text style={{ color: '#fff', fontWeight: 'bold', fontSize: 10 }}>Remind</Text>
+                        </TouchableOpacity>
+                    )}
+                    
+                    {(isOwedByMe || isOwedToMe) && (
+                        <TouchableOpacity 
+                        style={{ backgroundColor: colors.surfaceActive, paddingHorizontal: 12, paddingVertical: 6, borderRadius: 8, borderWidth: 1, borderColor: colors.border }}
+                        onPress={() => router.push({
+                            pathname: "/new/settlement",
+                            params: { 
+                                toUserId: (t.toUserId === currentUserId ? t.fromUserId : t.toUserId), 
+                                amount: t.amount.toString(), 
+                                groupId,
+                                direction: t.toUserId === currentUserId ? "THEY_PAID" : "YOU_PAID"
+                            }
+                        })}
+                        >
+                        <Text style={{ color: colors.text, fontWeight: 'bold', fontSize: 10 }}>Settle</Text>
+                        </TouchableOpacity>
+                    )}
+                </View>
               </View>
-            ))}
+            )})}
           </View>
         </>
       )}
