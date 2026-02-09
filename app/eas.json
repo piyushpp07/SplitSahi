@@ -8,7 +8,12 @@
             "distribution": "internal"
         },
         "preview": {
-            "distribution": "internal"
+            "android": {
+                "buildType": "apk"
+            },
+            "env": {
+                "EXPO_PUBLIC_API_URL": "https://splitsahi.onrender.com/api"
+            }
         },
         "production": {
             "android": {
@@ -20,6 +25,10 @@
         }
     },
     "submit": {
-        "production": {}
+        "production": {
+            "android": {
+                "serviceAccountKeyPath": "/Users/piyushparadkar/Downloads/docs/SahiSplit/sahisplit-6d29c38d51ad.json"
+            }
+        }
     }
 }
