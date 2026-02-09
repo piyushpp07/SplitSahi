@@ -29,12 +29,17 @@ export async function register(email: string, password: string, name: string, ph
   }
   const passwordHash = await bcrypt.hash(password, SALT_ROUNDS);
   const user = await prisma.user.create({
-    data: { email, name, passwordHash, phone, emailVerified: false }, // Explicitly false initially
+    data: { email, name, passwordHash, phone, emailVerified: true }, // Auto-verify for now
     select: { id: true, email: true, name: true, phone: true, upiId: true, avatarUrl: true, createdAt: true },
   });
 
-  // NO TOKEN HERE - User must verify email first
-  return { user };
+  const token = jwt.sign(
+    { userId: user.id, email: user.email } as JwtPayload,
+    JWT_SECRET,
+    { expiresIn: "7d" }
+  );
+
+  return { user, token };
 }
 
 export async function verifyEmail(email: string, otp: string) {
@@ -69,9 +74,9 @@ export async function login(email: string, password: string) {
   const user = await prisma.user.findUnique({ where: { email } });
   if (!user?.passwordHash) throw new AppError(401, "Invalid email or password", "INVALID_CREDENTIALS");
 
-  if (!user.emailVerified) {
-    throw new AppError(403, "Email not verified. Please verify your email first.", "EMAIL_NOT_VERIFIED");
-  }
+  // if (!user.emailVerified) {
+  //   throw new AppError(403, "Email not verified. Please verify your email first.", "EMAIL_NOT_VERIFIED");
+  // }
 
   const ok = await bcrypt.compare(password, user.passwordHash);
   if (!ok) throw new AppError(401, "Invalid email or password", "INVALID_CREDENTIALS");
