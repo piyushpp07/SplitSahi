@@ -42,6 +42,25 @@ authRouter.post(
 );
 
 authRouter.post(
+  "/verify-email",
+  body("email").isEmail().normalizeEmail(),
+  body("otp").isLength({ min: 6, max: 6 }),
+  async (req, res, next) => {
+    try {
+      const err = validationResult(req);
+      if (!err.isEmpty()) throw new AppError(400, err.array()[0].msg, "VALIDATION_ERROR");
+      const { email, otp } = req.body;
+      // Dynamic import to avoid circular dependency if any (though standard import is fine here)
+      // Switching to standard import pattern if cleaner, but consistent with existing file
+      const result = await import("../services/auth.js").then(m => m.verifyEmail(email, otp));
+      res.json(result);
+    } catch (e) {
+      next(e);
+    }
+  }
+);
+
+authRouter.post(
   "/reset-password",
   body("email").isEmail().normalizeEmail(),
   body("otp").isLength({ min: 6, max: 6 }),

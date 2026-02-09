@@ -18,7 +18,6 @@ export default function RegisterScreen() {
 
   const [step, setStep] = useState<"form" | "otp">("form");
   const [otp, setOtp] = useState("");
-  const [tempAuth, setTempAuth] = useState<{ token: string; user: any } | null>(null);
 
   async function handleRegister() {
     if (!name.trim() || !email.trim() || !password) {
@@ -31,15 +30,17 @@ export default function RegisterScreen() {
     }
     setLoading(true);
     try {
-      const res = await apiPost<{ user: any; token: string }>("/auth/register", { 
+      // Register (creates user, but NO token yet)
+      await apiPost<{ user: any }>("/auth/register", { 
         name: name.trim(), 
         email: email.trim(), 
         phone: phone.trim() || undefined, 
         password 
       }, { skipAuth: true });
       
-      setTempAuth(res);
-      const otpRes = await apiPost<{ success: boolean; message: string; code?: string }>("/otp/send", { identifier: email.trim(), type: "email" });
+      // We don't get a token here anymore. Verification is required.
+      // Send OTP explicitly (or backend could do it, but keeping frontend flow for now)
+      await apiPost<{ success: boolean; message: string; code?: string }>("/otp/send", { identifier: email.trim(), type: "email" });
       setStep("otp");
       
       Alert.alert("Verify Email", `We sent a code to ${email}`);
@@ -57,9 +58,14 @@ export default function RegisterScreen() {
     }
     setLoading(true);
     try {
-      await apiPost("/otp/verify", { identifier: email.trim(), code: otp, type: 'email' });
-      if (tempAuth) {
-        await setAuth(tempAuth.token, tempAuth.user);
+      // call verify-email to get the token
+      const res = await apiPost<{ user: any; token: string }>("/auth/verify-email", { 
+        email: email.trim(), 
+        otp 
+      }, { skipAuth: true });
+
+      if (res.token && res.user) {
+        await setAuth(res.token, res.user);
         router.replace("/(tabs)");
       }
     } catch (e) {
