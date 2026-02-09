@@ -160,3 +160,64 @@ groupsRouter.delete("/:id/members/:userId", async (req: AuthRequest, res, next) 
     next(e);
   }
 });
+
+// Join group by invite code or group ID
+groupsRouter.post(
+  "/join",
+  body("groupId").trim().notEmpty().withMessage("Group ID or invite code is required"),
+  async (req: AuthRequest, res, next) => {
+    try {
+      const err = validationResult(req);
+      if (!err.isEmpty()) throw new AppError(400, err.array()[0].msg, "VALIDATION_ERROR");
+      
+      const userId = (req as AuthRequest & { userEntity: { id: string } }).userEntity.id;
+      const { groupId } = req.body;
+
+      // Check if group exists
+      const group = await prisma.group.findUnique({
+        where: { id: groupId },
+        include: {
+          members: { include: { user: { select: { id: true, name: true, email: true } } } },
+        },
+      });
+
+      if (!group) {
+        throw new AppError(404, "Group not found. Please check the invite code.", "NOT_FOUND");
+      }
+
+      // Check if user is already a member
+      const existingMember = group.members.find(m => m.userId === userId);
+      if (existingMember) {
+        return res.json({
+          message: "You are already a member of this group",
+          group,
+        });
+      }
+
+      // Add user as member
+      await prisma.groupMember.create({
+        data: {
+          groupId: group.id,
+          userId,
+          role: "MEMBER",
+        },
+      });
+
+      // Fetch updated group
+      const updatedGroup = await prisma.group.findUnique({
+        where: { id: groupId },
+        include: {
+          creator: { select: { id: true, name: true, avatarUrl: true } },
+          members: { include: { user: { select: { id: true, name: true, avatarUrl: true, email: true } } } },
+        },
+      });
+
+      res.json({
+        message: `Successfully joined "${group.name}"!`,
+        group: updatedGroup,
+      });
+    } catch (e) {
+      next(e);
+    }
+  }
+);

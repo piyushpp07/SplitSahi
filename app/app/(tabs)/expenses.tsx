@@ -1,8 +1,13 @@
-import { View, Text, FlatList, TouchableOpacity, Alert } from "react-native";
+import { View, Text, FlatList, TouchableOpacity, Alert, StyleSheet, TextInput, ActivityIndicator } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { apiGet, apiDelete } from "@/lib/api";
+import { apiGet, apiDelete, API_URL } from "@/lib/api";
 import { Ionicons } from "@expo/vector-icons";
 import { useAuthStore } from "@/store/authStore";
+import { useTheme } from "@/contexts/ThemeContext";
+import * as FileSystem from "expo-file-system";
+import * as Sharing from "expo-sharing";
+import { useState } from "react";
 
 interface Expense {
   id: string;
@@ -24,40 +29,257 @@ const CATEGORY_ICONS: Record<string, any> = {
 };
 
 export default function ExpensesScreen() {
+  const { colors } = useTheme();
   const queryClient = useQueryClient();
+  const [search, setSearch] = useState("");
+  const [exporting, setExporting] = useState(false);
+  const token = useAuthStore.getState().token;
+
   const { data: expenses, isLoading, error } = useQuery({
     queryKey: ["expenses"],
     queryFn: () => apiGet<Expense[]>("/expenses"),
   });
 
+  const filteredExpenses = (expenses ?? []).filter(e => 
+    e.title.toLowerCase().includes(search.toLowerCase()) ||
+    e.category.toLowerCase().includes(search.toLowerCase())
+  );
+
+  async function handleExport() {
+    setExporting(true);
+    try {
+      const fileUri = ((FileSystem as any).documentDirectory || (FileSystem as any).cacheDirectory) + "expenses_report.csv";
+      const { uri } = await FileSystem.downloadAsync(
+        `${API_URL}/expenses/export`,
+        fileUri,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`
+          }
+        }
+      );
+      
+      if (await Sharing.isAvailableAsync()) {
+        await Sharing.shareAsync(uri);
+      } else {
+        Alert.alert("Success", "CSV file saved to " + uri);
+      }
+    } catch (e) {
+      Alert.alert("Export Failed", "Could not generate report");
+    } finally {
+      setExporting(false);
+    }
+  }
+
   if (isLoading) {
     return (
-      <View className="flex-1 bg-surface-dark items-center justify-center">
-        <Text className="text-slate-400">Loading expenses...</Text>
+      <View style={{ flex: 1, backgroundColor: colors.background, alignItems: 'center', justifyContent: 'center' }}>
+        <ActivityIndicator color={colors.primary} />
+        <Text style={{ color: colors.textSecondary, marginTop: 12 }}>Loading expenses...</Text>
       </View>
     );
   }
 
+  const styles = StyleSheet.create({
+    container: {
+      flex: 1,
+      backgroundColor: colors.background,
+    },
+    header: {
+      marginBottom: 32,
+      marginTop: 16,
+    },
+    subtitle: {
+      color: colors.textTertiary,
+      fontSize: 12,
+      fontWeight: 'bold',
+      textTransform: 'uppercase',
+      letterSpacing: 2,
+      marginBottom: 4,
+    },
+    title: {
+      fontSize: 32,
+      fontWeight: 'bold',
+      color: colors.text,
+      letterSpacing: -1,
+    },
+    card: {
+      backgroundColor: colors.surface,
+      borderRadius: 24,
+      padding: 24,
+      marginBottom: 20,
+      borderWidth: 1,
+      borderColor: colors.border,
+      shadowColor: "#000",
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.05,
+      shadowRadius: 8,
+      elevation: 2,
+    },
+    icon: {
+      height: 48,
+      width: 48,
+      borderRadius: 16,
+      backgroundColor: colors.surfaceActive,
+      alignItems: 'center',
+      justifyContent: 'center',
+      marginRight: 16,
+    },
+    itemTitle: {
+      color: colors.text,
+      fontWeight: 'bold',
+      fontSize: 18,
+      letterSpacing: -0.5,
+    },
+    categoryBadge: {
+      backgroundColor: colors.surfaceActive,
+      alignSelf: 'flex-start',
+      paddingHorizontal: 8,
+      paddingVertical: 4,
+      borderRadius: 8,
+      marginTop: 4,
+    },
+    categoryText: {
+      color: colors.textTertiary,
+      fontSize: 10,
+      fontWeight: 'bold',
+      textTransform: 'uppercase',
+      letterSpacing: 1,
+    },
+    amount: {
+      color: colors.text,
+      fontWeight: 'bold',
+      fontSize: 20,
+      letterSpacing: -1,
+      marginRight: 12,
+    },
+    decimal: {
+      color: colors.textTertiary,
+      fontSize: 14,
+      fontWeight: 'bold',
+    },
+    footer: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      paddingTop: 16,
+      borderTopWidth: 1,
+      borderTopColor: colors.border,
+    },
+    dateContainer: {
+      flexDirection: 'row',
+      alignItems: 'center',
+    },
+    dateText: {
+      color: colors.textTertiary,
+      fontSize: 10,
+      fontWeight: 'bold',
+      textTransform: 'uppercase',
+      letterSpacing: 1,
+    },
+    creatorBadge: {
+      backgroundColor: colors.surfaceActive,
+      paddingHorizontal: 8,
+      paddingVertical: 4,
+      borderRadius: 8,
+    },
+    creatorText: {
+      color: colors.primary,
+      fontSize: 10,
+      fontWeight: 'bold',
+      textTransform: 'uppercase',
+    },
+    emptyState: {
+      paddingVertical: 80,
+      backgroundColor: colors.surface,
+      borderRadius: 24,
+      borderWidth: 1,
+      borderColor: colors.border,
+      borderStyle: 'dashed',
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    emptyIcon: {
+      backgroundColor: colors.surfaceActive,
+      padding: 24,
+      borderRadius: 50,
+      marginBottom: 16,
+    },
+    emptyText: {
+      color: colors.textSecondary,
+      fontWeight: 'bold',
+      fontSize: 16,
+    },
+    emptySubtext: {
+      color: colors.textTertiary,
+      fontSize: 12,
+      marginTop: 4,
+    }
+  });
+
   return (
-    <View className="flex-1 bg-[#020617]">
+    <SafeAreaView style={styles.container}>
       <FlatList
-        data={expenses ?? []}
+        data={filteredExpenses}
         contentContainerStyle={{ padding: 24, paddingBottom: 120 }}
         keyExtractor={(item) => item.id}
         showsVerticalScrollIndicator={false}
         ListHeaderComponent={
-          <View className="mb-10 mt-6">
-            <Text className="text-slate-500 text-xs font-bold uppercase tracking-[2px] mb-1">Audit Trail</Text>
-            <Text className="text-4xl font-bold text-white tracking-tighter">Expenditure</Text>
+          <View style={styles.header}>
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+                <View>
+                    <Text style={styles.subtitle}>Audit Trail</Text>
+                    <Text style={styles.title}>Expenditure</Text>
+                </View>
+                <TouchableOpacity 
+                    onPress={handleExport}
+                    disabled={exporting}
+                    style={{ 
+                        backgroundColor: colors.surface, 
+                        height: 44, width: 44, borderRadius: 22, 
+                        alignItems: 'center', justifyContent: 'center',
+                        borderWidth: 1, borderColor: colors.border
+                    }}
+                >
+                    {exporting ? <ActivityIndicator size="small" color={colors.primary} /> : <Ionicons name="download-outline" size={22} color={colors.textSecondary} />}
+                </TouchableOpacity>
+            </View>
+
+            {/* Search Input */}
+            <View style={{ 
+                backgroundColor: colors.surface, 
+                borderRadius: 16, 
+                paddingHorizontal: 16, 
+                marginTop: 16,
+                flexDirection: 'row', 
+                alignItems: 'center', 
+                borderWidth: 1, 
+                borderColor: colors.border,
+                height: 50,
+            }}>
+              <Ionicons name="search" size={20} color={colors.textTertiary} />
+              <TextInput
+                style={{ flex: 1, marginLeft: 12, color: colors.text, fontSize: 16 }}
+                placeholder="Search by title or category..."
+                placeholderTextColor={colors.textMuted}
+                value={search}
+                onChangeText={setSearch}
+              />
+              {search.length > 0 && (
+                <TouchableOpacity onPress={() => setSearch("")}>
+                  <Ionicons name="close-circle" size={18} color={colors.textTertiary} />
+                </TouchableOpacity>
+              )}
+            </View>
           </View>
         }
         ListEmptyComponent={
-          <View className="py-20 bg-slate-900/30 rounded-[40px] border border-dashed border-slate-800 items-center justify-center">
-            <View className="bg-slate-800/40 p-6 rounded-full mb-4">
-              <Ionicons name="card-outline" size={32} color="#475569" />
+          <View style={styles.emptyState}>
+            <View style={styles.emptyIcon}>
+              <Ionicons name="card-outline" size={32} color={colors.textSecondary} />
             </View>
-            <Text className="text-slate-500 font-bold">No Records</Text>
-            <Text className="text-slate-600 text-xs mt-1 ">Add an expense to track it here</Text>
+            <Text style={styles.emptyText}>No Records</Text>
+            <Text style={styles.emptySubtext}>Add an expense to track it here</Text>
           </View>
         }
         renderItem={({ item }) => {
@@ -79,48 +301,48 @@ export default function ExpensesScreen() {
           }
 
           return (
-            <View className="bg-slate-900/40 rounded-[32px] p-6 mb-5 border border-white/5 shadow-sm">
-              <View className="flex-row items-center justify-between mb-5">
-                <View className="flex-row items-center flex-1">
-                  <View className="h-12 w-12 rounded-2xl bg-slate-800 items-center justify-center mr-4 border border-white/5">
+            <View style={styles.card}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 }}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1 }}>
+                  <View style={styles.icon}>
                     <Ionicons 
                       name={(CATEGORY_ICONS[item.category?.toLowerCase()] || "cash-outline") as any} 
                       size={20} 
-                      color="#94a3b8" 
+                      color={colors.textSecondary} 
                     />
                   </View>
-                  <View className="flex-1">
-                    <Text className="text-white font-bold text-lg tracking-tight" numberOfLines={1}>{item.title}</Text>
-                    <View className="bg-slate-800/50 self-start px-2 py-0.5 rounded-lg mt-0.5">
-                      <Text className="text-slate-500 text-[10px] font-bold uppercase tracking-widest">{item.category}</Text>
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.itemTitle} numberOfLines={1}>{item.title}</Text>
+                    <View style={styles.categoryBadge}>
+                      <Text style={styles.categoryText}>{item.category}</Text>
                     </View>
                   </View>
                 </View>
-                <View className="items-end flex-row items-center">
-                  <Text className="text-white font-bold text-xl tracking-tighter mr-3">
+                <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                  <Text style={styles.amount}>
                     ₹{Number(item.totalAmount).toFixed(0)}
-                    <Text className="text-slate-500 text-sm font-bold">.{Number(item.totalAmount).toFixed(2).split('.')[1]}</Text>
+                    <Text style={styles.decimal}>.{Number(item.totalAmount).toFixed(2).split('.')[1]}</Text>
                   </Text>
                   {isCreator && (
                     <TouchableOpacity onPress={handleDelete}>
-                      <Ionicons name="trash-outline" size={18} color="#f87171" />
+                      <Ionicons name="trash-outline" size={18} color={colors.error} />
                     </TouchableOpacity>
                   )}
                 </View>
               </View>
-              <View className="flex-row items-center justify-between pt-4 border-t border-white/5">
-                <View className="flex-row items-center">
-                  <Ionicons name="calendar-outline" size={12} color="#475569" className="mr-2" />
-                  <Text className="text-slate-500 text-[10px] font-bold uppercase tracking-wider">{new Date(item.createdAt).toLocaleDateString()}</Text>
+              <View style={styles.footer}>
+                <View style={styles.dateContainer}>
+                  <Ionicons name="calendar-outline" size={12} color={colors.textTertiary} style={{ marginRight: 8 }} />
+                  <Text style={styles.dateText}>{new Date(item.createdAt).toLocaleDateString()}</Text>
                 </View>
-                <View className="bg-indigo-500/10 px-2 py-1 rounded-lg">
-                  <Text className="text-indigo-400 text-[9px] font-bold uppercase tracking-tighter">{item.creator.name}</Text>
+                <View style={styles.creatorBadge}>
+                  <Text style={styles.creatorText}>{item.creator.name}</Text>
                 </View>
               </View>
             </View>
           );
         }}
       />
-    </View>
+    </SafeAreaView>
   );
 }

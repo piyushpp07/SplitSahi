@@ -21,8 +21,19 @@ settlementsRouter.post(
       const err = validationResult(req);
       if (!err.isEmpty()) throw new AppError(400, err.array()[0].msg, "VALIDATION_ERROR");
       
-      const fromUserId = (req as AuthRequest & { userEntity: { id: string } }).userEntity.id;
-      const { toUserId, amount, groupId, paymentMethod = "CASH", notes } = req.body;
+      const currentUserId = (req as AuthRequest & { userEntity: { id: string } }).userEntity.id;
+      let { toUserId, fromUserId, amount, groupId, paymentMethod = "CASH", notes } = req.body;
+
+      if (!fromUserId) fromUserId = currentUserId;
+
+      // Validation: Current user must be involved
+      if (fromUserId !== currentUserId && toUserId !== currentUserId) {
+        throw new AppError(403, "You can only record settlements you are part of", "FORBIDDEN");
+      }
+
+      if (fromUserId === toUserId) {
+        throw new AppError(400, "Cannot settle with yourself", "INVALID_DATA");
+      }
 
       const settlement = await prisma.settlement.create({
         data: {

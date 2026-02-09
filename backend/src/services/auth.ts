@@ -3,9 +3,22 @@ import jwt from "jsonwebtoken";
 import { prisma } from "../lib/prisma.js";
 import { AppError } from "../middleware/errorHandler.js";
 import type { JwtPayload } from "../middleware/auth.js";
+import { verifyOTP } from "./otp.js";
 
 const JWT_SECRET = process.env.JWT_SECRET ?? "dev-secret-change-me";
 const SALT_ROUNDS = 10;
+
+export async function resetPassword(email: string, otp: string, newPassword: string) {
+  const result = await verifyOTP(email, otp, "email");
+  if (!result.success) throw new AppError(400, result.message, "OTP_VERIFICATION_FAILED");
+
+  const passwordHash = await bcrypt.hash(newPassword, SALT_ROUNDS);
+  await prisma.user.update({
+    where: { email },
+    data: { passwordHash },
+  });
+  return { success: true };
+}
 
 export async function register(email: string, password: string, name: string, phone?: string) {
   const existing = await prisma.user.findUnique({ where: { email } });

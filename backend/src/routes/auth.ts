@@ -40,3 +40,21 @@ authRouter.post(
     }
   }
 );
+
+authRouter.post(
+  "/reset-password",
+  body("email").isEmail().normalizeEmail(),
+  body("otp").isLength({ min: 6, max: 6 }),
+  body("newPassword").isLength({ min: 6 }),
+  async (req, res, next) => {
+    try {
+      const err = validationResult(req);
+      if (!err.isEmpty()) throw new AppError(400, err.array()[0].msg, "VALIDATION_ERROR");
+      const { email, otp, newPassword } = req.body;
+      await import("../services/auth.js").then(m => m.resetPassword(email, otp, newPassword));
+      res.json({ success: true, message: "Password reset successfully" });
+    } catch (e) {
+      next(e);
+    }
+  }
+);

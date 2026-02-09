@@ -1,11 +1,12 @@
-import { useState, useCallback } from "react";
-import { View, Text, ScrollView, TouchableOpacity, Linking, Alert, TextInput, RefreshControl, StyleSheet, Dimensions } from "react-native";
+import { useState, useCallback, useMemo } from "react";
+import { View, Text, ScrollView, TouchableOpacity, Linking, Alert, TextInput, RefreshControl, StyleSheet, Dimensions, LayoutAnimation } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { useQuery } from "@tanstack/react-query";
 import { apiGet } from "@/lib/api";
 import { useAuthStore } from "@/store/authStore";
 import { router, useFocusEffect } from "expo-router";
+import { useTheme } from "@/contexts/ThemeContext";
 
 const { width } = Dimensions.get("window");
 
@@ -29,6 +30,8 @@ export default function DashboardScreen() {
   const [search, setSearch] = useState("");
   const [timeOfDay, setTimeOfDay] = useState("Good Morning");
   
+  const { colors, isDark } = useTheme();
+  
   const { data, isLoading, error, refetch, isFetching } = useQuery({
     queryKey: ["dashboard"],
     queryFn: () => apiGet<DashboardRes>("/dashboard"),
@@ -50,12 +53,418 @@ export default function DashboardScreen() {
 
   const getGreeting = () => timeOfDay;
 
+  const styles = useMemo(() => StyleSheet.create({
+    container: {
+      flex: 1,
+      backgroundColor: colors.background,
+    },
+    loadingContainer: {
+      flex: 1,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    loadingIcon: {
+      backgroundColor: isDark ? 'rgba(56, 189, 248, 0.1)' : 'rgba(99, 102, 241, 0.1)',
+      padding: 16,
+      borderRadius: 50,
+      marginBottom: 16,
+    },
+    loadingText: {
+      color: colors.textSecondary,
+      fontWeight: 'bold',
+      fontSize: 16,
+    },
+    errorContainer: {
+      flex: 1,
+      alignItems: 'center',
+      justifyContent: 'center',
+      padding: 24,
+    },
+    errorText: {
+      color: colors.error,
+      textAlign: 'center',
+      marginTop: 16,
+      fontWeight: 'bold',
+    },
+    retryButton: {
+      backgroundColor: isDark ? 'rgba(239, 68, 68, 0.2)' : 'rgba(239, 68, 68, 0.1)',
+      paddingHorizontal: 24,
+      paddingVertical: 12,
+      borderRadius: 12,
+      marginTop: 16,
+    },
+    retryText: {
+      color: colors.error,
+      fontWeight: 'bold',
+    },
+    header: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+      paddingHorizontal: 20,
+      paddingTop: 12,
+      paddingBottom: 16,
+    },
+    greeting: {
+      color: colors.textTertiary,
+      fontSize: 12,
+      fontWeight: 'normal',
+    },
+    userName: {
+      color: colors.text,
+      fontSize: 24,
+      fontWeight: 'bold',
+    },
+    headerButtons: {
+      flexDirection: 'row',
+      gap: 8,
+    },
+    headerBtn: {
+      height: 44,
+      width: 44,
+      borderRadius: 22,
+      backgroundColor: colors.card,
+      alignItems: 'center',
+      justifyContent: 'center',
+      borderWidth: 1,
+      borderColor: colors.border,
+      shadowColor: colors.shadow,
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.05,
+      shadowRadius: 4,
+      elevation: 2,
+    },
+    headerBtnActive: {
+      backgroundColor: colors.primary,
+      borderColor: colors.primary,
+    },
+    searchContainer: {
+      marginHorizontal: 20,
+      marginBottom: 16,
+      backgroundColor: colors.surface,
+      borderRadius: 16,
+      flexDirection: 'row',
+      alignItems: 'center',
+      paddingHorizontal: 16,
+      borderWidth: 1,
+      borderColor: colors.border,
+    },
+    searchInput: {
+      flex: 1,
+      paddingHorizontal: 12,
+      paddingVertical: 14,
+      color: colors.text,
+      fontSize: 15,
+    },
+    balanceCard: {
+      marginHorizontal: 20,
+      marginBottom: 20,
+      backgroundColor: colors.card,
+      borderRadius: 24,
+      padding: 20,
+      borderWidth: 1,
+      borderColor: colors.borderLight,
+      shadowColor: colors.shadow,
+      shadowOffset: { width: 0, height: 10 },
+      shadowOpacity: isDark ? 0.3 : 0.08,
+      shadowRadius: 20,
+      elevation: 10,
+    },
+    balanceLabel: {
+      color: colors.textSecondary,
+      fontSize: 11,
+      fontWeight: 'bold',
+      textTransform: 'uppercase',
+      letterSpacing: 1,
+      marginBottom: 8,
+    },
+    balanceAmount: {
+      fontSize: 36,
+      fontWeight: 'bold',
+      marginBottom: 20,
+      color: colors.text,
+    },
+    positive: {
+      color: colors.success,
+    },
+    negative: {
+      color: colors.error,
+    },
+    balanceRow: {
+      flexDirection: 'row',
+      gap: 12,
+    },
+    balanceItem: {
+      flex: 1,
+      backgroundColor: colors.background,
+      borderRadius: 16,
+      padding: 14,
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 10,
+    },
+    balanceIconRed: {
+      backgroundColor: isDark ? 'rgba(248, 113, 113, 0.15)' : 'rgba(239, 68, 68, 0.1)',
+      padding: 8,
+      borderRadius: 10,
+    },
+    balanceIconGreen: {
+      backgroundColor: isDark ? 'rgba(16, 185, 129, 0.15)' : 'rgba(16, 185, 129, 0.1)',
+      padding: 8,
+      borderRadius: 10,
+    },
+    balanceItemLabel: {
+      color: colors.textTertiary,
+      fontSize: 10,
+      fontWeight: 'bold',
+      textTransform: 'uppercase',
+    },
+    balanceItemValue: {
+      color: colors.text,
+      fontSize: 18,
+      fontWeight: 'bold',
+    },
+    section: {
+      paddingHorizontal: 20,
+      marginBottom: 24,
+    },
+    sectionTitle: {
+      color: colors.textTertiary,
+      fontSize: 10,
+      fontWeight: 'bold',
+      letterSpacing: 2,
+      marginBottom: 12,
+    },
+    sectionTitleLarge: {
+      color: colors.text,
+      fontSize: 18,
+      fontWeight: 'bold',
+    },
+    sectionSubtitle: {
+      color: colors.textSecondary,
+      fontSize: 12,
+      marginTop: 2,
+    },
+    sectionHeader: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+      marginBottom: 16,
+    },
+    historyBtn: {
+      backgroundColor: colors.surface,
+      paddingHorizontal: 14,
+      paddingVertical: 8,
+      borderRadius: 10,
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 4,
+      borderWidth: 1,
+      borderColor: colors.border,
+    },
+    historyBtnText: {
+      color: colors.textSecondary,
+      fontSize: 12,
+      fontWeight: 'bold',
+    },
+    quickActionsRow: {
+      flexDirection: 'row',
+      gap: 10,
+    },
+    quickAction: {
+      flex: 1,
+      borderRadius: 20,
+      padding: 16,
+      minHeight: 120,
+      justifyContent: 'space-between',
+      shadowColor: colors.shadow,
+      shadowOffset: { width: 0, height: 4 },
+      shadowOpacity: 0.1,
+      shadowRadius: 8,
+      elevation: 4,
+    },
+    quickActionIcon: {
+      backgroundColor: 'rgba(255, 255, 255, 0.2)',
+      width: 44,
+      height: 44,
+      borderRadius: 14,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    quickActionLabel: {
+      color: '#fff',
+      fontSize: 13,
+      fontWeight: 'bold',
+      marginTop: 12,
+    },
+    quickActionSub: {
+      color: 'rgba(255, 255, 255, 0.7)',
+      fontSize: 10,
+      fontWeight: 'normal',
+      marginTop: 2,
+    },
+    emptyState: {
+      backgroundColor: colors.card,
+      borderRadius: 24,
+      padding: 40,
+      alignItems: 'center',
+      borderWidth: 1,
+      borderColor: colors.borderLight,
+      borderStyle: 'dashed',
+    },
+    emptyIcon: {
+      backgroundColor: isDark ? 'rgba(16, 185, 129, 0.1)' : 'rgba(16, 185, 129, 0.1)',
+      padding: 16,
+      borderRadius: 50,
+      marginBottom: 16,
+    },
+    emptyTitle: {
+      color: colors.text,
+      fontSize: 18,
+      fontWeight: 'bold',
+    },
+    emptySubtitle: {
+      color: colors.textSecondary,
+      fontSize: 14,
+      marginTop: 4,
+    },
+    transactionCard: {
+      backgroundColor: colors.card,
+      borderRadius: 20,
+      padding: 16,
+      borderWidth: 1,
+      borderColor: colors.borderLight,
+      shadowColor: colors.shadow,
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.05,
+      shadowRadius: 4,
+      elevation: 2,
+    },
+    transactionHeader: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      marginBottom: 12,
+    },
+    avatar: {
+      width: 48,
+      height: 48,
+      borderRadius: 16,
+      backgroundColor: colors.surfaceActive,
+      alignItems: 'center',
+      justifyContent: 'center',
+      marginRight: 12,
+    },
+    avatarText: {
+      color: colors.primary,
+      fontSize: 18,
+      fontWeight: 'bold',
+    },
+    transactionName: {
+      color: colors.text,
+      fontSize: 15,
+      fontWeight: 'bold',
+    },
+    transactionSubtext: {
+      color: colors.textSecondary,
+      fontSize: 12,
+    },
+    transactionAmount: {
+      color: colors.success,
+      fontSize: 22,
+      fontWeight: 'bold',
+    },
+    actionRow: {
+      flexDirection: 'row',
+      gap: 10,
+    },
+    recordBtn: {
+      flex: 1,
+      height: 48,
+      borderRadius: 14,
+      backgroundColor: colors.surface,
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: 6,
+      borderWidth: 1,
+      borderColor: colors.border,
+    },
+    recordBtnText: {
+      color: colors.textSecondary,
+      fontSize: 14,
+      fontWeight: 'bold',
+    },
+    payBtn: {
+      flex: 1,
+      height: 48,
+      borderRadius: 14,
+      backgroundColor: colors.primary,
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: 6,
+    },
+    payBtnDisabled: {
+      backgroundColor: colors.textMuted,
+    },
+    payBtnText: {
+      color: '#fff',
+      fontSize: 14,
+      fontWeight: 'bold',
+    },
+    incomingBadge: {
+      backgroundColor: isDark ? 'rgba(16, 185, 129, 0.1)' : 'rgba(16, 185, 129, 0.1)',
+      borderRadius: 12,
+      paddingVertical: 12,
+      alignItems: 'center',
+      borderWidth: 1,
+      borderColor: isDark ? 'rgba(16, 185, 129, 0.2)' : 'rgba(16, 185, 129, 0.2)',
+    },
+    incomingText: {
+      color: colors.success,
+      fontSize: 14,
+      fontWeight: 'bold',
+    },
+    analyticsBanner: {
+      marginHorizontal: 20,
+      marginBottom: 24,
+      backgroundColor: isDark ? '#1e293b' : colors.primary,
+      borderRadius: 20,
+      padding: 16,
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+      shadowColor: colors.primary,
+      shadowOffset: { width: 0, height: 4 },
+      shadowOpacity: 0.2,
+      shadowRadius: 8,
+      elevation: 4,
+    },
+    analyticsIcon: {
+      width: 40,
+      height: 40,
+      borderRadius: 12,
+      backgroundColor: 'rgba(255,255,255,0.2)',
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    analyticsTitle: {
+      color: '#fff',
+      fontSize: 14,
+      fontWeight: 'bold',
+    },
+    analyticsSubtitle: {
+      color: 'rgba(255,255,255,0.8)',
+      fontSize: 12,
+    },
+  }), [colors, isDark]);
+
   if (isLoading) {
     return (
       <SafeAreaView style={styles.container} edges={['top']}>
         <View style={styles.loadingContainer}>
           <View style={styles.loadingIcon}>
-            <Ionicons name="wallet" size={32} color="#38bdf8" />
+            <Ionicons name="wallet" size={32} color={colors.primary} />
           </View>
           <Text style={styles.loadingText}>Loading your finances...</Text>
         </View>
@@ -67,7 +476,7 @@ export default function DashboardScreen() {
     return (
       <SafeAreaView style={styles.container} edges={['top']}>
         <View style={styles.errorContainer}>
-          <Ionicons name="cloud-offline" size={48} color="#ef4444" />
+          <Ionicons name="cloud-offline" size={48} color={colors.error} />
           <Text style={styles.errorText}>{error instanceof Error ? error.message : "Failed to load"}</Text>
           <TouchableOpacity onPress={() => refetch()} style={styles.retryButton}>
             <Text style={styles.retryText}>Retry</Text>
@@ -120,7 +529,7 @@ export default function DashboardScreen() {
         contentContainerStyle={{ paddingBottom: 100 }}
         showsVerticalScrollIndicator={false}
         refreshControl={
-          <RefreshControl refreshing={isFetching} onRefresh={refetch} tintColor="#38bdf8" />
+          <RefreshControl refreshing={isFetching} onRefresh={refetch} tintColor={colors.primary} />
         }
       >
         {/* Header */}
@@ -132,33 +541,43 @@ export default function DashboardScreen() {
           <View style={styles.headerButtons}>
             <TouchableOpacity 
               style={[styles.headerBtn, showSearch && styles.headerBtnActive]}
-              onPress={() => setShowSearch(!showSearch)}
+              onPress={() => {
+                LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+                setShowSearch(!showSearch);
+                if (showSearch) setSearch("");
+              }}
             >
-              <Ionicons name="search" size={18} color={showSearch ? "#020617" : "#94a3b8"} />
+              <Ionicons name="search" size={18} color={showSearch ? "#fff" : colors.textSecondary} />
             </TouchableOpacity>
             <TouchableOpacity 
               style={styles.headerBtn}
               onPress={() => router.push("/friends")}
             >
-              <Ionicons name="people" size={18} color="#94a3b8" />
+              <Ionicons name="people" size={18} color={colors.textSecondary} />
             </TouchableOpacity>
           </View>
         </View>
         
         {showSearch && (
           <View style={styles.searchContainer}>
-            <Ionicons name="search" size={16} color="#64748b" />
+            <Ionicons name="search" size={16} color={colors.textTertiary} />
             <TextInput
               style={styles.searchInput}
               placeholder="Search transactions..."
-              placeholderTextColor="#64748b"
+              placeholderTextColor={colors.textMuted}
               value={search}
-              onChangeText={setSearch}
+              onChangeText={(text) => {
+                LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+                setSearch(text);
+              }}
               autoFocus
             />
             {search.length > 0 && (
-              <TouchableOpacity onPress={() => setSearch("")}>
-                <Ionicons name="close-circle" size={18} color="#64748b" />
+              <TouchableOpacity onPress={() => {
+                LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+                setSearch("");
+              }}>
+                <Ionicons name="close-circle" size={18} color={colors.textTertiary} />
               </TouchableOpacity>
             )}
           </View>
@@ -167,14 +586,23 @@ export default function DashboardScreen() {
         {/* Balance Card */}
         <View style={styles.balanceCard}>
           <Text style={styles.balanceLabel}>Net Balance</Text>
-          <Text style={[styles.balanceAmount, netBalance >= 0 ? styles.positive : styles.negative]}>
-            {netBalance >= 0 ? '+' : ''}₹{Math.abs(netBalance).toFixed(2)}
-          </Text>
+          <View style={{flexDirection: 'row', alignItems: 'flex-end', justifyContent: 'space-between'}}>
+            <Text style={[styles.balanceAmount, netBalance >= 0 ? styles.positive : styles.negative]}>
+              {netBalance >= 0 ? '+' : ''}₹{Math.abs(netBalance).toFixed(2)}
+            </Text>
+            {netBalance !== 0 && (
+              <View style={{paddingBottom: 24}}>
+                  <Text style={{color: netBalance > 0 ? colors.success : colors.error, fontWeight: 'bold', fontSize: 12}}>
+                      {netBalance > 0 ? "You are owed" : "You owe"}
+                  </Text>
+              </View>
+            )}
+          </View>
           
           <View style={styles.balanceRow}>
             <View style={styles.balanceItem}>
               <View style={styles.balanceIconRed}>
-                <Ionicons name="arrow-down" size={14} color="#f87171" />
+                <Ionicons name="arrow-down" size={14} color={colors.error} />
               </View>
               <View>
                 <Text style={styles.balanceItemLabel}>You Owe</Text>
@@ -183,7 +611,7 @@ export default function DashboardScreen() {
             </View>
             <View style={styles.balanceItem}>
               <View style={styles.balanceIconGreen}>
-                <Ionicons name="arrow-up" size={14} color="#10b981" />
+                <Ionicons name="arrow-up" size={14} color={colors.success} />
               </View>
               <View>
                 <Text style={styles.balanceItemLabel}>You Get</Text>
@@ -192,6 +620,24 @@ export default function DashboardScreen() {
             </View>
           </View>
         </View>
+
+        {/* Analytics Banner */}
+        <TouchableOpacity 
+          style={styles.analyticsBanner}
+          onPress={() => router.push("/analytics")}
+          activeOpacity={0.9}
+        >
+          <View style={{flexDirection: 'row', alignItems: 'center'}}>
+            <View style={styles.analyticsIcon}>
+              <Ionicons name="pie-chart" size={20} color="#fff" />
+            </View>
+            <View style={{marginLeft: 12}}>
+              <Text style={styles.analyticsTitle}>Spending Insights</Text>
+              <Text style={styles.analyticsSubtitle}>Track your monthly expenses</Text>
+            </View>
+          </View>
+          <Ionicons name="chevron-forward" size={20} color="rgba(255,255,255,0.6)" />
+        </TouchableOpacity>
 
         {/* Quick Actions */}
         <View style={styles.section}>
@@ -250,7 +696,7 @@ export default function DashboardScreen() {
                 style={styles.historyBtn}
               >
                 <Text style={styles.historyBtnText}>History</Text>
-                <Ionicons name="chevron-forward" size={14} color="#64748b" />
+                <Ionicons name="chevron-forward" size={14} color={colors.textTertiary} />
               </TouchableOpacity>
             )}
           </View>
@@ -258,7 +704,7 @@ export default function DashboardScreen() {
           {filteredTransactions.length === 0 ? (
             <View style={styles.emptyState}>
               <View style={styles.emptyIcon}>
-                <Ionicons name="checkmark-circle" size={40} color="#10b981" />
+                <Ionicons name="checkmark-circle" size={40} color={colors.success} />
               </View>
               <Text style={styles.emptyTitle}>All Settled! 🎉</Text>
               <Text style={styles.emptySubtitle}>No pending payments</Text>
@@ -280,22 +726,27 @@ export default function DashboardScreen() {
                           {t.fromUserId === userId ? "You" : t.fromUser?.name}
                         </Text>
                         <Text style={styles.transactionSubtext}>
-                          owes {t.toUserId === userId ? "You" : t.toUser?.name}
+                          {(t.fromUserId === userId ? "owe " : "owes ")}
+                          {t.toUserId === userId ? "You" : t.toUser?.name}
                         </Text>
                       </View>
                       <Text style={styles.transactionAmount}>₹{t.amount.toFixed(0)}</Text>
                     </View>
                     
-                    {isPayer && (
+                    {isPayer ? (
                       <View style={styles.actionRow}>
                         <TouchableOpacity
                           style={styles.recordBtn}
                           onPress={() => router.push({
                             pathname: "/new/settlement",
-                            params: { toUserId: t.toUserId, amount: t.amount.toString() }
+                            params: { 
+                              toUserId: t.toUserId, 
+                              amount: t.amount.toString(),
+                              direction: "YOU_PAID"
+                            }
                           })}
                         >
-                          <Ionicons name="receipt" size={16} color="#94a3b8" />
+                          <Ionicons name="receipt" size={16} color={colors.textSecondary} />
                           <Text style={styles.recordBtnText}>Record</Text>
                         </TouchableOpacity>
                         <TouchableOpacity
@@ -303,15 +754,29 @@ export default function DashboardScreen() {
                           onPress={() => openUPIPay(t)}
                           disabled={isSettling}
                         >
-                          <Ionicons name="flash" size={16} color="#020617" />
+                          <Ionicons name="flash" size={16} color="#fff" />
                           <Text style={styles.payBtnText}>{isSettling ? "Opening..." : "Pay Now"}</Text>
                         </TouchableOpacity>
                       </View>
-                    )}
-                    
-                    {!isPayer && (
-                      <View style={styles.incomingBadge}>
-                        <Text style={styles.incomingText}>💰 Payment incoming</Text>
+                    ) : (
+                      <View style={styles.actionRow}>
+                        <View style={[styles.incomingBadge, { flex: 1 }]}>
+                          <Text style={styles.incomingText}>💰 Payment incoming</Text>
+                        </View>
+                        <TouchableOpacity
+                          style={[styles.recordBtn, { marginLeft: 12 }]}
+                          onPress={() => router.push({
+                            pathname: "/new/settlement",
+                            params: { 
+                              toUserId: t.fromUserId, 
+                              amount: t.amount.toString(),
+                              direction: "THEY_PAID"
+                            }
+                          })}
+                        >
+                          <Ionicons name="checkmark-circle" size={16} color={colors.success} />
+                          <Text style={[styles.recordBtnText, { color: colors.success }]}>Settle</Text>
+                        </TouchableOpacity>
                       </View>
                     )}
                   </View>
@@ -324,349 +789,3 @@ export default function DashboardScreen() {
     </SafeAreaView>
   );
 }
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#020617',
-  },
-  loadingContainer: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  loadingIcon: {
-    backgroundColor: 'rgba(56, 189, 248, 0.2)',
-    padding: 16,
-    borderRadius: 50,
-    marginBottom: 16,
-  },
-  loadingText: {
-    color: '#fff',
-    fontWeight: 'bold',
-    fontSize: 16,
-  },
-  errorContainer: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    padding: 24,
-  },
-  errorText: {
-    color: '#ef4444',
-    textAlign: 'center',
-    marginTop: 16,
-    fontWeight: 'bold',
-  },
-  retryButton: {
-    backgroundColor: 'rgba(239, 68, 68, 0.2)',
-    paddingHorizontal: 24,
-    paddingVertical: 12,
-    borderRadius: 12,
-    marginTop: 16,
-  },
-  retryText: {
-    color: '#ef4444',
-    fontWeight: 'bold',
-  },
-  header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingHorizontal: 20,
-    paddingTop: 12,
-    paddingBottom: 16,
-  },
-  greeting: {
-    color: '#64748b',
-    fontSize: 12,
-    fontWeight: 'normal',
-  },
-  userName: {
-    color: '#fff',
-    fontSize: 24,
-    fontWeight: 'bold',
-  },
-  headerButtons: {
-    flexDirection: 'row',
-    gap: 8,
-  },
-  headerBtn: {
-    height: 44,
-    width: 44,
-    borderRadius: 22,
-    backgroundColor: '#1e293b',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  headerBtnActive: {
-    backgroundColor: '#38bdf8',
-  },
-  searchContainer: {
-    marginHorizontal: 20,
-    marginBottom: 16,
-    backgroundColor: '#1e293b',
-    borderRadius: 16,
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 16,
-    borderWidth: 1,
-    borderColor: '#334155',
-  },
-  searchInput: {
-    flex: 1,
-    paddingHorizontal: 12,
-    paddingVertical: 14,
-    color: '#fff',
-    fontSize: 15,
-  },
-  balanceCard: {
-    marginHorizontal: 20,
-    marginBottom: 20,
-    backgroundColor: '#0f172a',
-    borderRadius: 24,
-    padding: 20,
-    borderWidth: 1,
-    borderColor: '#1e293b',
-  },
-  balanceLabel: {
-    color: '#64748b',
-    fontSize: 11,
-    fontWeight: 'bold',
-    textTransform: 'uppercase',
-    letterSpacing: 1,
-    marginBottom: 8,
-  },
-  balanceAmount: {
-    fontSize: 36,
-    fontWeight: 'bold',
-    marginBottom: 20,
-  },
-  positive: {
-    color: '#10b981',
-  },
-  negative: {
-    color: '#ef4444',
-  },
-  balanceRow: {
-    flexDirection: 'row',
-    gap: 12,
-  },
-  balanceItem: {
-    flex: 1,
-    backgroundColor: '#1e293b',
-    borderRadius: 16,
-    padding: 14,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-  },
-  balanceIconRed: {
-    backgroundColor: 'rgba(248, 113, 113, 0.2)',
-    padding: 8,
-    borderRadius: 10,
-  },
-  balanceIconGreen: {
-    backgroundColor: 'rgba(16, 185, 129, 0.2)',
-    padding: 8,
-    borderRadius: 10,
-  },
-  balanceItemLabel: {
-    color: '#64748b',
-    fontSize: 10,
-    fontWeight: 'bold',
-    textTransform: 'uppercase',
-  },
-  balanceItemValue: {
-    color: '#fff',
-    fontSize: 18,
-    fontWeight: 'bold',
-  },
-  section: {
-    paddingHorizontal: 20,
-    marginBottom: 24,
-  },
-  sectionTitle: {
-    color: '#475569',
-    fontSize: 10,
-    fontWeight: 'bold',
-    letterSpacing: 2,
-    marginBottom: 12,
-  },
-  sectionTitleLarge: {
-    color: '#fff',
-    fontSize: 18,
-    fontWeight: 'bold',
-  },
-  sectionSubtitle: {
-    color: '#64748b',
-    fontSize: 12,
-    marginTop: 2,
-  },
-  sectionHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 16,
-  },
-  historyBtn: {
-    backgroundColor: '#1e293b',
-    paddingHorizontal: 14,
-    paddingVertical: 8,
-    borderRadius: 10,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-  },
-  historyBtnText: {
-    color: '#64748b',
-    fontSize: 12,
-    fontWeight: 'bold',
-  },
-  quickActionsRow: {
-    flexDirection: 'row',
-    gap: 10,
-  },
-  quickAction: {
-    flex: 1,
-    borderRadius: 20,
-    padding: 16,
-    minHeight: 120,
-    justifyContent: 'space-between',
-  },
-  quickActionIcon: {
-    backgroundColor: 'rgba(255, 255, 255, 0.2)',
-    width: 44,
-    height: 44,
-    borderRadius: 14,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  quickActionLabel: {
-    color: '#fff',
-    fontSize: 13,
-    fontWeight: 'bold',
-    marginTop: 12,
-  },
-  quickActionSub: {
-    color: 'rgba(255, 255, 255, 0.6)',
-    fontSize: 10,
-    fontWeight: 'normal',
-    marginTop: 2,
-  },
-  emptyState: {
-    backgroundColor: '#0f172a',
-    borderRadius: 24,
-    padding: 40,
-    alignItems: 'center',
-    borderWidth: 1,
-    borderColor: '#1e293b',
-    borderStyle: 'dashed',
-  },
-  emptyIcon: {
-    backgroundColor: 'rgba(16, 185, 129, 0.2)',
-    padding: 16,
-    borderRadius: 50,
-    marginBottom: 16,
-  },
-  emptyTitle: {
-    color: '#fff',
-    fontSize: 18,
-    fontWeight: 'bold',
-  },
-  emptySubtitle: {
-    color: '#64748b',
-    fontSize: 14,
-    marginTop: 4,
-  },
-  transactionCard: {
-    backgroundColor: '#0f172a',
-    borderRadius: 20,
-    padding: 16,
-    borderWidth: 1,
-    borderColor: '#1e293b',
-  },
-  transactionHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 12,
-  },
-  avatar: {
-    width: 48,
-    height: 48,
-    borderRadius: 16,
-    backgroundColor: '#1e293b',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginRight: 12,
-  },
-  avatarText: {
-    color: '#fff',
-    fontSize: 18,
-    fontWeight: 'bold',
-  },
-  transactionName: {
-    color: '#fff',
-    fontSize: 15,
-    fontWeight: 'bold',
-  },
-  transactionSubtext: {
-    color: '#64748b',
-    fontSize: 12,
-  },
-  transactionAmount: {
-    color: '#10b981',
-    fontSize: 22,
-    fontWeight: 'bold',
-  },
-  actionRow: {
-    flexDirection: 'row',
-    gap: 10,
-  },
-  recordBtn: {
-    flex: 1,
-    height: 48,
-    borderRadius: 14,
-    backgroundColor: '#1e293b',
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 6,
-  },
-  recordBtnText: {
-    color: '#94a3b8',
-    fontSize: 14,
-    fontWeight: 'bold',
-  },
-  payBtn: {
-    flex: 1,
-    height: 48,
-    borderRadius: 14,
-    backgroundColor: '#38bdf8',
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 6,
-  },
-  payBtnDisabled: {
-    backgroundColor: '#475569',
-  },
-  payBtnText: {
-    color: '#020617',
-    fontSize: 14,
-    fontWeight: 'bold',
-  },
-  incomingBadge: {
-    backgroundColor: 'rgba(16, 185, 129, 0.1)',
-    borderRadius: 12,
-    paddingVertical: 12,
-    alignItems: 'center',
-    borderWidth: 1,
-    borderColor: 'rgba(16, 185, 129, 0.2)',
-  },
-  incomingText: {
-    color: '#10b981',
-    fontSize: 14,
-    fontWeight: 'bold',
-  },
-});

@@ -3,7 +3,8 @@
  * Uses React Query in components; this is the raw fetch wrapper.
  */
 
-const API_BASE = process.env.EXPO_PUBLIC_API_URL ?? "http://localhost:4000/api";
+export const API_URL = process.env.EXPO_PUBLIC_API_URL ?? "http://localhost:4000/api";
+const API_BASE = API_URL;
 
 export type ApiError = { error: string; code?: string };
 

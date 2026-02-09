@@ -1,46 +1,48 @@
 import { Tabs, router } from "expo-router";
 import { Platform, View, StyleSheet } from "react-native";
-import { BlurView } from "expo-blur";
 import { Ionicons } from "@expo/vector-icons";
 import Animated, { useAnimatedStyle, withSpring, withTiming } from "react-native-reanimated";
+import { useTheme } from "@/contexts/ThemeContext";
 
-function TabIcon({ icon, focused }: { icon: any; focused: boolean }) {
+function TabIcon({ icon, focused, colors, isDark }: { icon: any; focused: boolean; colors: any; isDark: boolean }) {
   const animatedIconStyle = useAnimatedStyle(() => {
     return {
       transform: [
         { 
-          scale: withSpring(focused ? 1.2 : 1, {
-            damping: 12,
+          scale: withSpring(focused ? 1.1 : 1, {
+            damping: 10,
             stiffness: 100,
           }) 
         }
       ],
-      opacity: withTiming(focused ? 1 : 0.5, { duration: 200 }),
     };
   }, [focused]);
 
-  const animatedPillStyle = useAnimatedStyle(() => {
+  const animatedContainerStyle = useAnimatedStyle(() => {
     return {
-      width: withSpring(focused ? 20 : 0, { damping: 12 }),
-      opacity: withTiming(focused ? 1 : 0, { duration: 150 }),
+      backgroundColor: withTiming(
+        focused ? colors.surfaceActive : 'transparent',
+        { duration: 200 }
+      ),
     };
-  }, [focused]);
+  }, [focused, colors.surfaceActive]);
 
   return (
-    <View style={styles.tabIconContainer}>
-      <Animated.View style={[styles.activePill, animatedPillStyle]} />
+    <Animated.View style={[styles.tabIconContainer, animatedContainerStyle]}>
       <Animated.View style={animatedIconStyle}>
         <Ionicons 
           name={focused ? icon : `${icon}-outline`} 
-          size={26} 
-          color={focused ? "#38bdf8" : "#94a3b8"} 
+          size={24} 
+          color={focused ? colors.primary : colors.textTertiary} 
         />
       </Animated.View>
-    </View>
+    </Animated.View>
   );
 }
 
 export default function TabsLayout() {
+  const { colors, isDark } = useTheme();
+
   return (
     <Tabs
       screenOptions={{
@@ -48,38 +50,34 @@ export default function TabsLayout() {
         tabBarShowLabel: false,
         tabBarStyle: {
           position: "absolute",
-          bottom: Platform.OS === "ios" ? 28 : 20,
-          left: 40,
-          right: 40,
-          height: 54,
-          backgroundColor: Platform.OS === "ios" ? "transparent" : "rgba(11, 19, 43, 0.98)",
-          borderRadius: 27,
-          borderTopWidth: 0,
+          bottom: Platform.OS === "ios" ? 32 : 20,
+          left: 20,
+          right: 20,
+          height: 72,
+          backgroundColor: colors.surface,
+          borderRadius: 24,
           borderWidth: 1,
-          borderColor: "rgba(56, 189, 248, 0.15)",
-          elevation: 15,
+          borderColor: colors.border,
+          elevation: 8,
           shadowColor: "#000",
-          shadowOffset: { width: 0, height: 10 },
-          shadowOpacity: 0.4,
-          shadowRadius: 15,
+          shadowOffset: { width: 0, height: 4 },
+          shadowOpacity: 0.1,
+          shadowRadius: 12,
           paddingBottom: 0,
+          paddingTop: 0,
         },
         tabBarItemStyle: {
-          height: 54,
+          height: 72,
+          paddingVertical: 12,
         },
-        tabBarBackground: () => (
-          Platform.OS === "ios" ? (
-            <BlurView intensity={90} tint="dark" style={{ ...StyleSheet.absoluteFillObject, borderRadius: 27, overflow: 'hidden' }} />
-          ) : null
-        ),
       }}
     >
       <Tabs.Screen
         name="index"
         options={{
-          title: "Dashboard",
+          title: "Home",
           tabBarIcon: ({ focused }) => (
-            <TabIcon icon="stats-chart" focused={focused} />
+            <TabIcon icon="home" focused={focused} colors={colors} isDark={isDark} />
           ),
         }}
       />
@@ -88,7 +86,7 @@ export default function TabsLayout() {
         options={{
           title: "Groups",
           tabBarIcon: ({ focused }) => (
-            <TabIcon icon="people" focused={focused} />
+            <TabIcon icon="people" focused={focused} colors={colors} isDark={isDark} />
           ),
         }}
       />
@@ -97,8 +95,14 @@ export default function TabsLayout() {
         options={{
           title: "Add",
           tabBarIcon: ({ focused }) => (
-            <View className="h-14 w-14 rounded-full bg-primary items-center justify-center shadow-lg shadow-primary/30 -mt-4 border-4 border-[#020617]">
-              <Ionicons name="add" size={32} color="#020617" />
+            <View style={[
+              styles.addButton,
+              { 
+                backgroundColor: colors.primary,
+                shadowColor: colors.primary,
+              }
+            ]}>
+              <Ionicons name="add" size={32} color={isDark ? "#000000" : "#FFFFFF"} />
             </View>
           ),
         }}
@@ -114,7 +118,7 @@ export default function TabsLayout() {
         options={{
           title: "Activity",
           tabBarIcon: ({ focused }) => (
-            <TabIcon icon="list" focused={focused} />
+            <TabIcon icon="receipt" focused={focused} colors={colors} isDark={isDark} />
           ),
         }}
       />
@@ -123,7 +127,7 @@ export default function TabsLayout() {
         options={{
           title: "Profile",
           tabBarIcon: ({ focused }) => (
-            <TabIcon icon="person" focused={focused} />
+            <TabIcon icon="person" focused={focused} colors={colors} isDark={isDark} />
           ),
         }}
       />
@@ -141,20 +145,20 @@ const styles = StyleSheet.create({
   tabIconContainer: {
     alignItems: "center",
     justifyContent: "center",
-    height: 54,
-    width: 60,
-    paddingTop: 6,
+    height: 48,
+    width: 48,
+    borderRadius: 24, // Circular container for premium feel
   },
-  activePill: {
-    position: "absolute",
-    top: 0,
-    width: 16,
-    height: 2,
-    backgroundColor: "#38bdf8",
-    borderRadius: 1,
-    shadowColor: "#38bdf8",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.9,
+  addButton: {
+    height: 54, // Centered vertically in 72px bar
+    width: 54,
+    borderRadius: 27,
+    alignItems: "center",
+    justifyContent: "center",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.2, // Softer shadow
     shadowRadius: 6,
+    elevation: 4,
   },
 });

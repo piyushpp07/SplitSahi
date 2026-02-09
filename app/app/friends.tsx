@@ -1,10 +1,11 @@
 import { useState } from "react";
-import { View, Text, FlatList, TouchableOpacity, Alert, ActivityIndicator, TextInput } from "react-native";
+import { View, Text, FlatList, TouchableOpacity, Alert, ActivityIndicator, TextInput, KeyboardAvoidingView, Platform, LayoutAnimation, StyleSheet } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiGet, apiDelete } from "@/lib/api";
 import { Ionicons } from "@expo/vector-icons";
 import { router } from "expo-router";
+import { useTheme } from "@/contexts/ThemeContext";
 
 interface Friend {
   id: string;
@@ -14,6 +15,7 @@ interface Friend {
 }
 
 export default function FriendsScreen() {
+  const { colors, isDark } = useTheme();
   const queryClient = useQueryClient();
   const [search, setSearch] = useState("");
   
@@ -50,45 +52,213 @@ export default function FriendsScreen() {
 
   if (isLoading) {
     return (
-      <View className="flex-1 bg-[#020617] items-center justify-center">
-        <ActivityIndicator color="#38bdf8" />
+      <View style={{ flex: 1, backgroundColor: colors.background, alignItems: 'center', justifyContent: 'center' }}>
+        <ActivityIndicator color={colors.primary} />
       </View>
     );
   }
 
+  const styles = StyleSheet.create({
+      container: {
+        flex: 1,
+        backgroundColor: colors.background,
+      },
+      header: {
+        marginBottom: 24,
+        marginTop: 16,
+      },
+      headerTop: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        marginBottom: 16,
+      },
+      backBtn: {
+        height: 40,
+        width: 40,
+        borderRadius: 12,
+        backgroundColor: colors.surface,
+        alignItems: 'center',
+        justifyContent: 'center',
+        borderWidth: 1,
+        borderColor: colors.border,
+      },
+      addBtn: {
+        height: 40,
+        width: 40,
+        borderRadius: 12,
+        backgroundColor: colors.primary,
+        alignItems: 'center',
+        justifyContent: 'center',
+      },
+      headerSubtitle: {
+        fontSize: 10,
+        fontWeight: 'bold',
+        color: colors.textSecondary,
+        textTransform: 'uppercase',
+        letterSpacing: 2,
+        marginBottom: 4,
+      },
+      headerTitle: {
+        fontSize: 32,
+        fontWeight: 'bold',
+        color: colors.text,
+        letterSpacing: -1,
+        fontStyle: 'italic',
+      },
+      searchContainer: {
+        backgroundColor: colors.surface,
+        borderRadius: 16,
+        paddingHorizontal: 16,
+        marginBottom: 24,
+        flexDirection: 'row',
+        alignItems: 'center',
+        borderWidth: 1,
+        borderColor: colors.border,
+        height: 50,
+      },
+      searchInput: {
+        flex: 1,
+        marginLeft: 12,
+        color: colors.text,
+        fontSize: 16,
+      },
+      listContainer: {
+        paddingBottom: 100,
+      },
+      friendCard: {
+        backgroundColor: colors.surface,
+        borderRadius: 20,
+        padding: 16,
+        flexDirection: 'row',
+        alignItems: 'center',
+        marginBottom: 12,
+        borderWidth: 1,
+        borderColor: colors.border,
+      },
+      avatar: {
+        height: 48,
+        width: 48,
+        borderRadius: 16,
+        backgroundColor: colors.surfaceActive,
+        alignItems: 'center',
+        justifyContent: 'center',
+        marginRight: 16,
+        borderWidth: 1,
+        borderColor: colors.border,
+      },
+      avatarText: {
+        fontSize: 20,
+        fontWeight: 'bold',
+        color: colors.primary,
+      },
+      friendInfo: {
+        flex: 1,
+      },
+      friendName: {
+        color: colors.text,
+        fontWeight: 'bold',
+        fontSize: 14,
+        marginBottom: 2,
+      },
+      friendEmail: {
+        color: colors.textSecondary,
+        fontSize: 11,
+      },
+      actionBtn: {
+        height: 36,
+        width: 36,
+        borderRadius: 12,
+        alignItems: 'center',
+        justifyContent: 'center',
+      },
+      emptyState: {
+        backgroundColor: colors.surface,
+        borderRadius: 24,
+        padding: 40,
+        alignItems: 'center',
+        marginTop: 16,
+        borderWidth: 1,
+        borderColor: colors.border,
+        borderStyle: 'dashed',
+      },
+      emptyIcon: {
+        backgroundColor: colors.surfaceActive,
+        padding: 20,
+        borderRadius: 40,
+        marginBottom: 16,
+      },
+      emptyText: {
+        color: colors.textSecondary,
+        fontWeight: 'bold',
+        textTransform: 'uppercase',
+        letterSpacing: 1,
+        fontSize: 10,
+        textAlign: 'center',
+        marginBottom: 16,
+      },
+      emptyActionBtn: {
+        backgroundColor: colors.primary,
+        paddingHorizontal: 24,
+        paddingVertical: 12,
+        borderRadius: 12,
+      }
+  });
+
   return (
-    <SafeAreaView className="flex-1 bg-[#020617]" edges={['top']}>
-      <View className="flex-1 px-6">
+    <SafeAreaView style={styles.container} edges={['top']}>
+      <KeyboardAvoidingView 
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        style={{ flex: 1 }}
+      >
+      <View style={{ flex: 1, paddingHorizontal: 24 }}>
         {/* Header */}
-        <View className="mb-6 mt-4">
-          <View className="flex-row items-center justify-between mb-4">
-            <TouchableOpacity onPress={() => router.back()} className="h-10 w-10 bg-slate-900 rounded-xl items-center justify-center border border-slate-800">
-              <Ionicons name="arrow-back" size={20} color="#94a3b8" />
+        <View style={styles.header}>
+          <View style={styles.headerTop}>
+            <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
+              <Ionicons name="arrow-back" size={20} color={colors.textSecondary} />
             </TouchableOpacity>
-            <TouchableOpacity 
-              onPress={() => router.push("/new/friend")}
-              className="h-10 w-10 bg-primary rounded-xl items-center justify-center"
-            >
-              <Ionicons name="add" size={22} color="#020617" />
-            </TouchableOpacity>
+            <View style={{ flexDirection: 'row', gap: 12 }}>
+                <TouchableOpacity 
+                onPress={() => {
+                    const message = "Hey, let's split expenses easily on SplitSahi! Download now: https://splitsahi.se/download";
+                    require("react-native").Share.share({ message });
+                }}
+                style={[styles.backBtn, { borderColor: colors.primary + '40' }]}
+                >
+                <Ionicons name="share-outline" size={20} color={colors.primary} />
+                </TouchableOpacity>
+                <TouchableOpacity 
+                onPress={() => router.push("/new/friend")}
+                style={styles.addBtn}
+                >
+                <Ionicons name="add" size={22} color="#fff" />
+                </TouchableOpacity>
+            </View>
           </View>
-          <Text className="text-slate-500 text-[10px] font-bold uppercase tracking-[2px] mb-1">Human Grid</Text>
-          <Text className="text-4xl font-bold text-white tracking-tighter italic">Friends</Text>
+          <Text style={styles.headerSubtitle}>Human Grid</Text>
+          <Text style={styles.headerTitle}>Friends</Text>
         </View>
 
         {/* Search */}
-        <View className="bg-slate-900 rounded-2xl border border-slate-800 flex-row items-center px-4 mb-6">
-          <Ionicons name="search" size={18} color="#475569" />
+        <View style={styles.searchContainer}>
+          <Ionicons name="search" size={20} color={colors.textTertiary} />
           <TextInput
-            className="flex-1 px-3 py-3 text-white "
+            style={styles.searchInput}
             placeholder="Search friends..."
-            placeholderTextColor="#475569"
+            placeholderTextColor={colors.textMuted}
             value={search}
-            onChangeText={setSearch}
+            onChangeText={(text) => {
+              LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+              setSearch(text);
+            }}
           />
           {search.length > 0 && (
-            <TouchableOpacity onPress={() => setSearch("")}>
-              <Ionicons name="close-circle" size={18} color="#475569" />
+            <TouchableOpacity onPress={() => {
+              LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+              setSearch("");
+            }}>
+              <Ionicons name="close-circle" size={18} color={colors.textTertiary} />
             </TouchableOpacity>
           )}
         </View>
@@ -97,53 +267,54 @@ export default function FriendsScreen() {
           data={filteredFriends}
           keyExtractor={(item) => item.id}
           showsVerticalScrollIndicator={false}
-          contentContainerStyle={{ paddingBottom: 100 }}
+          contentContainerStyle={styles.listContainer}
           renderItem={({ item }) => (
             <TouchableOpacity 
               onPress={() => router.push(`/friend/${item.id}`)}
-              className="bg-slate-900/60 rounded-[24px] p-4 flex-row items-center mb-3 border border-white/5"
+              style={styles.friendCard}
               activeOpacity={0.7}
             >
-              <View className="h-12 w-12 rounded-2xl bg-slate-800 items-center justify-center mr-4 border border-white/10">
-                <Text className="text-lg font-bold text-white">{item.name.charAt(0)}</Text>
+              <View style={styles.avatar}>
+                <Text style={styles.avatarText}>{item.name.charAt(0)}</Text>
               </View>
-              <View className="flex-1">
-                <Text className="text-white font-bold text-sm mb-0.5">{item.name}</Text>
-                <Text className="text-slate-500 text-[10px] ">{item.email}</Text>
+              <View style={styles.friendInfo}>
+                <Text style={styles.friendName}>{item.name}</Text>
+                <Text style={styles.friendEmail}>{item.email}</Text>
               </View>
-              <View className="flex-row items-center">
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
                 <TouchableOpacity 
                   onPress={() => handleRemove(item)}
-                  className="h-9 w-9 rounded-xl bg-red-500/10 items-center justify-center mr-2"
+                  style={[styles.actionBtn, { backgroundColor: colors.errorLight }]}
                 >
-                  <Ionicons name="trash-outline" size={16} color="#f87171" />
+                  <Ionicons name="trash-outline" size={16} color={colors.error} />
                 </TouchableOpacity>
-                <View className="h-9 w-9 rounded-xl bg-slate-800 items-center justify-center">
-                  <Ionicons name="chevron-forward" size={16} color="#64748b" />
+                <View style={[styles.actionBtn, { backgroundColor: colors.surfaceActive }]}>
+                  <Ionicons name="chevron-forward" size={16} color={colors.textTertiary} />
                 </View>
               </View>
             </TouchableOpacity>
           )}
           ListEmptyComponent={
-            <View className="bg-slate-900/30 rounded-[32px] p-10 border border-dashed border-slate-800 items-center mt-4">
-              <View className="bg-slate-800/50 p-5 rounded-full mb-4">
-                <Ionicons name="people-outline" size={32} color="#475569" />
+            <View style={styles.emptyState}>
+              <View style={styles.emptyIcon}>
+                <Ionicons name="people-outline" size={32} color={colors.textSecondary} />
               </View>
-              <Text className="text-slate-500 font-bold uppercase tracking-widest text-[10px] text-center mb-4">
+              <Text style={styles.emptyText}>
                 {search ? "No friends match your search" : "No friends yet"}
               </Text>
               {!search && (
                 <TouchableOpacity 
                   onPress={() => router.push("/new/friend")}
-                  className="bg-primary px-6 py-3 rounded-xl"
+                  style={styles.emptyActionBtn}
                 >
-                  <Text className="text-[#020617] font-bold text-[10px] uppercase tracking-widest">Add Friend</Text>
+                  <Text style={{ color: '#fff', fontWeight: 'bold', fontSize: 10, textTransform: 'uppercase', letterSpacing: 1 }}>Add Friend</Text>
                 </TouchableOpacity>
               )}
             </View>
           }
         />
       </View>
+      </KeyboardAvoidingView>
     </SafeAreaView>
   );
 }

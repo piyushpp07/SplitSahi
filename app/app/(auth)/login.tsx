@@ -5,8 +5,10 @@ import { useAuthStore } from "@/store/authStore";
 import { apiPost } from "@/lib/api";
 import { Ionicons } from "@expo/vector-icons";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { useTheme } from "@/contexts/ThemeContext";
 
 export default function LoginScreen() {
+  const { colors, isDark } = useTheme();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
@@ -34,30 +36,38 @@ export default function LoginScreen() {
   }
 
   return (
-    <SafeAreaView className="flex-1 bg-[#020617]" edges={['top', 'bottom']}>
+    <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }} edges={['top', 'bottom']}>
       <KeyboardAvoidingView
         behavior={Platform.OS === "ios" ? "padding" : "height"}
-        className="flex-1"
+        style={{ flex: 1 }}
       >
         <ScrollView 
           contentContainerStyle={{ flexGrow: 1, padding: 24, justifyContent: 'center' }}
           showsVerticalScrollIndicator={false}
           keyboardShouldPersistTaps="handled"
         >
-          <View className="mb-8 items-center">
-            <Text className="text-2xl font-bold text-white tracking-tighter mb-1">Welcome Back</Text>
-            <Text className="text-slate-500 font-bold uppercase tracking-[2px] text-[10px]">Log in to your account</Text>
+          <View style={{ marginBottom: 32, alignItems: 'center' }}>
+            <Text style={{ fontSize: 24, fontWeight: 'bold', color: colors.text, marginBottom: 4, letterSpacing: -0.5 }}>Welcome Back</Text>
+            <Text style={{ color: colors.textSecondary, fontWeight: 'bold', textTransform: 'uppercase', letterSpacing: 2, fontSize: 10 }}>Log in to your account</Text>
           </View>
 
-          <View className="gap-4 mb-8">
-            <View className="bg-slate-900 rounded-[20px] border border-slate-800 p-1 flex-row items-center">
-              <View className="h-10 w-10 items-center justify-center ml-2">
-                <Ionicons name="mail-outline" size={18} color="#64748b" />
+          <View style={{ gap: 16, marginBottom: 32 }}>
+            <View style={{ 
+              backgroundColor: colors.surface, 
+              borderRadius: 20, 
+              borderWidth: 1, 
+              borderColor: colors.border, 
+              padding: 4, 
+              flexDirection: 'row', 
+              alignItems: 'center' 
+            }}>
+              <View style={{ height: 40, width: 40, alignItems: 'center', justifyContent: 'center', marginLeft: 8 }}>
+                <Ionicons name="mail-outline" size={18} color={colors.textTertiary} />
               </View>
               <TextInput
-                className="flex-1 px-3 py-3 text-white text-base "
+                style={{ flex: 1, padding: 12, color: colors.text, fontSize: 16 }}
                 placeholder="Email Address"
-                placeholderTextColor="#475569"
+                placeholderTextColor={colors.textMuted}
                 value={email}
                 onChangeText={setEmail}
                 autoCapitalize="none"
@@ -65,36 +75,69 @@ export default function LoginScreen() {
               />
             </View>
 
-            <View className="bg-slate-900 rounded-[20px] border border-slate-800 p-1 flex-row items-center">
-              <View className="h-10 w-10 items-center justify-center ml-2">
-                <Ionicons name="lock-closed-outline" size={18} color="#64748b" />
+            <View style={{ 
+              backgroundColor: colors.surface, 
+              borderRadius: 20, 
+              borderWidth: 1, 
+              borderColor: colors.border, 
+              padding: 4, 
+              flexDirection: 'row', 
+              alignItems: 'center' 
+            }}>
+              <View style={{ height: 40, width: 40, alignItems: 'center', justifyContent: 'center', marginLeft: 8 }}>
+                <Ionicons name="lock-closed-outline" size={18} color={colors.textTertiary} />
               </View>
               <TextInput
-                className="flex-1 px-3 py-3 text-white text-base "
+                style={{ flex: 1, padding: 12, color: colors.text, fontSize: 16 }}
                 placeholder="Password"
-                placeholderTextColor="#475569"
+                placeholderTextColor={colors.textMuted}
                 value={password}
                 onChangeText={setPassword}
                 secureTextEntry
               />
             </View>
+            <View style={{ alignItems: 'flex-end', marginTop: 8 }}>
+               <Link href="/(auth)/forgot-password" asChild>
+                  <TouchableOpacity>
+                     <Text style={{ color: colors.primary, fontSize: 14, fontWeight: '600' }}>Forgot Password?</Text>
+                  </TouchableOpacity>
+               </Link>
+            </View>
           </View>
 
           <TouchableOpacity
-            className={`h-14 rounded-[20px] items-center justify-center mb-8 shadow-xl ${loading ? 'bg-slate-800' : 'bg-primary'}`}
+            style={{
+              height: 56,
+              borderRadius: 20,
+              alignItems: 'center',
+              justifyContent: 'center',
+              marginBottom: 32,
+              backgroundColor: loading ? colors.surfaceActive : colors.primary,
+              shadowColor: colors.primary,
+              shadowOffset: { width: 0, height: 4 },
+              shadowOpacity: 0.2,
+              shadowRadius: 8,
+              elevation: 4,
+            }}
             onPress={handleLogin}
             disabled={loading}
           >
-            <Text className="text-[#020617] font-bold text-xs uppercase tracking-widest">
+            <Text style={{ 
+              color: '#ffffff', 
+              fontWeight: 'bold', 
+              fontSize: 12, 
+              textTransform: 'uppercase', 
+              letterSpacing: 1.5 
+            }}>
               {loading ? "Logging in..." : "Log In"}
             </Text>
           </TouchableOpacity>
 
-          <View className="flex-row justify-center items-center pb-8">
-            <Text className="text-slate-500 font-bold text-[10px] uppercase tracking-tighter">New user? </Text>
+          <View style={{ flexDirection: 'row', justifyContent: 'center', alignItems: 'center', paddingBottom: 32 }}>
+            <Text style={{ color: colors.textSecondary, fontWeight: 'bold', fontSize: 10, textTransform: 'uppercase', letterSpacing: 1 }}>New user? </Text>
             <Link href="/(auth)/register" asChild>
               <TouchableOpacity>
-                <Text className="text-primary font-bold text-[10px] uppercase tracking-widest">Sign Up</Text>
+                <Text style={{ color: colors.primary, fontWeight: 'bold', fontSize: 10, textTransform: 'uppercase', letterSpacing: 1 }}>Sign Up</Text>
               </TouchableOpacity>
             </Link>
           </View>

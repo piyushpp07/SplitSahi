@@ -1,27 +1,36 @@
 {
   "expo": {
-    "name": "SplitSahiSe",
-    "slug": "splitsahise",
+    "name": "SplitSahi",
+    "slug": "splitsahi",
     "version": "1.0.0",
     "orientation": "portrait",
     "userInterfaceStyle": "dark",
-    "scheme": "splitsahise",
+    "scheme": "splitsahi",
     "splash": {
       "image": "./assets/images/splash.png",
       "resizeMode": "contain",
-      "backgroundColor": "#0f172a"
+      "backgroundColor": "#020617"
     },
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.splitsahise.app"
+      "bundleIdentifier": "com.splitsahi.app",
+      "infoPlist": {
+        "LSApplicationQueriesSchemes": [
+          "upi",
+          "tez",
+          "phonepe",
+          "paytm",
+          "bhim"
+        ]
+      }
     },
     "icon": "./assets/images/icon.png",
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./assets/images/adaptive-icon.png",
-        "backgroundColor": "#0f172a"
+        "backgroundColor": "#020617"
       },
-      "package": "com.splitsahise.app",
+      "package": "com.splitsahi.app",
       "intentFilters": [
         {
           "action": "VIEW",

@@ -1,5 +1,5 @@
-import { useState, useEffect } from "react";
-import { View, Text, TextInput, TouchableOpacity, Alert, ActivityIndicator, ScrollView, Platform } from "react-native";
+import { useState, useEffect, useMemo } from "react";
+import { View, Text, TextInput, TouchableOpacity, Alert, ActivityIndicator, ScrollView, Platform, StyleSheet, KeyboardAvoidingView } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { apiGet, apiPost } from "@/lib/api";
 import { router } from "expo-router";
@@ -7,9 +7,10 @@ import { useAuthStore } from "@/store/authStore";
 import { useQuery } from "@tanstack/react-query";
 import { useLocalSearchParams } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { KeyboardAvoidingView } from "react-native";
 import { notifyExpenseAdded } from "@/lib/notifications";
 import DateTimePicker from "@react-native-community/datetimepicker";
+import CurrencySelector from "@/components/CurrencySelector";
+import { useTheme } from "@/contexts/ThemeContext";
 
 const CATEGORIES = ["Food", "Transport", "Shopping", "Entertainment", "Bills", "Other"];
 const SPLIT_TYPES = [
@@ -30,6 +31,7 @@ interface Friend {
 }
 
 export default function AddExpenseScreen() {
+  const { colors, isDark } = useTheme();
   const params = useLocalSearchParams<{ groupId?: string; friendId?: string }>();
   const currentUser = useAuthStore((s) => s.user);
   const [title, setTitle] = useState("");
@@ -38,11 +40,16 @@ export default function AddExpenseScreen() {
   const [category, setCategory] = useState("Other");
   const [groupId, setGroupId] = useState<string | null>(params.groupId || null);
   const [friendId, setFriendId] = useState<string | null>(params.friendId || null);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [selectedFriendIds, setSelectedFriendIds] = useState<string[]>(params.friendId ? [params.friendId] : []);
   const [loading, setLoading] = useState(false);
   const [splitType, setSplitType] = useState<"EQUAL" | "PERCENTAGE" | "EXACT">("EQUAL");
   const [customSplits, setCustomSplits] = useState<Record<string, string>>({});
   const [expenseDate, setExpenseDate] = useState(new Date());
   const [showDatePicker, setShowDatePicker] = useState(false);
+  const [frequency, setFrequency] = useState<string | null>(null);
+  const [currency, setCurrency] = useState("INR");
+  const [payerId, setPayerId] = useState<string | null>(null);
 
   const { data: groups, isLoading: loadingGroups } = useQuery({
     queryKey: ["groups"],
@@ -54,20 +61,39 @@ export default function AddExpenseScreen() {
     queryFn: () => apiGet<Friend[]>("/friendships"),
   });
 
-  // Get participants based on selection
-  const getParticipants = (): Array<{ id: string; name: string }> => {
+  // Filtered friends based on search
+  const filteredFriends = useMemo(() => {
+    if (!friends) return [];
+    return friends.filter(f => 
+      f.name.toLowerCase().includes(searchQuery.toLowerCase())
+    );
+  }, [friends, searchQuery]);
+
+  // Compute final participants
+  const participants = useMemo(() => {
     if (!currentUser) return [];
     if (groupId) {
       const g = groups?.find(x => x.id === groupId);
       return g?.members.map(m => m.user) || [];
-    } else if (friendId) {
-      const f = friends?.find(x => x.id === friendId);
-      return [{ id: currentUser.id, name: currentUser.name }, ...(f ? [f] : [])];
+    } else {
+      const selectedFriends = friends?.filter(f => selectedFriendIds.includes(f.id)) || [];
+      return [{ id: currentUser.id, name: currentUser.name }, ...selectedFriends];
     }
-    return [{ id: currentUser.id, name: currentUser.name }];
+  }, [groupId, selectedFriendIds, groups, friends, currentUser]);
+
+  const toggleFriend = (id: string) => {
+    setGroupId(null);
+    setSelectedFriendIds(prev => 
+      prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]
+    );
   };
 
-  const participants = getParticipants();
+  // Set default payer
+  useEffect(() => {
+    if (currentUser && !payerId) {
+      setPayerId(currentUser.id);
+    }
+  }, [currentUser]);
 
   // Smart categorization
   useEffect(() => {
@@ -91,16 +117,18 @@ export default function AddExpenseScreen() {
   // Reset custom splits when participants change
   useEffect(() => {
     const newSplits: Record<string, string> = {};
-    participants.forEach(p => {
-      if (splitType === "PERCENTAGE") {
-        newSplits[p.id] = (100 / participants.length).toFixed(0);
-      } else if (splitType === "EXACT") {
-        const total = parseFloat(amount) || 0;
-        newSplits[p.id] = (total / participants.length).toFixed(2);
-      }
-    });
-    setCustomSplits(newSplits);
-  }, [groupId, friendId, splitType, participants.length]);
+    if (participants.length > 0) {
+      participants.forEach(p => {
+        if (splitType === "PERCENTAGE") {
+          newSplits[p.id] = (100 / participants.length).toFixed(0);
+        } else if (splitType === "EXACT") {
+          const total = parseFloat(amount) || 0;
+          newSplits[p.id] = (total / participants.length).toFixed(2);
+        }
+      });
+      setCustomSplits(newSplits);
+    }
+  }, [groupId, selectedFriendIds, splitType, participants.length]);
 
   function formatDate(date: Date): string {
     const today = new Date();
@@ -113,16 +141,24 @@ export default function AddExpenseScreen() {
   }
 
   async function handleCreate() {
-    if (!title.trim() || !amount || (!groupId && !friendId)) {
-      Alert.alert("Missing Info", "Please fill in all required fields");
+    if (!title.trim() || !amount || (!groupId && selectedFriendIds.length === 0)) {
+      Alert.alert("Missing Info", "Please select a group or at least one friend to split with");
       return;
     }
 
     const userId = useAuthStore.getState().user?.id;
-    if (!userId) return;
+    if (!userId || !payerId) {
+       Alert.alert("Missing Info", "Please select who paid");
+       return;
+    }
 
-    const pIds = participants.map(p => p.id);
+    const pIds = participants.map(p => p.id).filter(id => !!id);
     const totalAmount = parseFloat(amount);
+    
+    if (isNaN(totalAmount) || totalAmount <= 0) {
+      Alert.alert("Invalid Amount", "Please enter a valid amount greater than 0");
+      return;
+    }
 
     let splits: Array<{ userId: string; amountOwed?: number; percentage?: number }> | undefined;
 
@@ -147,69 +183,279 @@ export default function AddExpenseScreen() {
         amountOwed: parseFloat(customSplits[uid] || "0"),
       }));
     }
-    
+    const payload = {
+      title: title.trim(),
+      description: notes.trim() || undefined,
+      totalAmount,
+      category,
+      groupId: groupId || undefined,
+      participantIds: pIds,
+      splitType,
+      payers: [{ userId: payerId!, amountPaid: totalAmount }],
+      splits: splitType !== "EQUAL" ? splits : undefined,
+      date: expenseDate.toISOString(),
+      frequency: frequency || undefined,
+      currency,
+    };
+
+    console.log("Adding expense with payload:", JSON.stringify(payload, null, 2));
+
     setLoading(true);
     try {
-      const groupName = groupId ? groups?.find(g => g.id === groupId)?.name : undefined;
-      await apiPost("/expenses", {
-        title: title.trim(),
-        description: notes.trim() || undefined,
-        totalAmount,
-        category,
-        groupId: groupId || undefined,
-        participantIds: pIds,
-        payers: [{ userId, amountPaid: totalAmount }],
-        splitType,
-        splits: splitType !== "EQUAL" ? splits : undefined,
-        date: expenseDate.toISOString(),
-      });
+      await apiPost("/expenses", payload);
       
-      notifyExpenseAdded(currentUser?.name || "You", title.trim(), totalAmount, groupName);
+      notifyExpenseAdded(currentUser?.name || "You", title.trim(), totalAmount, groupId ? groups?.find(g => g.id === groupId)?.name : undefined);
       
       Alert.alert("Done!", "Expense added successfully");
       router.replace("/(tabs)");
-    } catch (e) {
-      Alert.alert("Error", e instanceof Error ? e.message : "Failed to add expense");
+    } catch (e: any) {
+      console.error("Add expense failed:", e);
+      Alert.alert("Error", e.message || "Failed to add expense");
     } finally {
       setLoading(false);
     }
   }
 
+  const styles = useMemo(() => StyleSheet.create({
+    container: {
+      flex: 1,
+      backgroundColor: colors.background,
+    },
+    header: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      marginBottom: 24,
+      marginTop: 16,
+    },
+    backBtn: {
+      height: 40,
+      width: 40,
+      borderRadius: 12,
+      backgroundColor: colors.surface,
+      alignItems: 'center',
+      justifyContent: 'center',
+      marginRight: 16,
+    },
+    headerTitle: {
+      fontSize: 20,
+      fontWeight: 'bold',
+      color: colors.text,
+    },
+    section: {
+      marginBottom: 20,
+    },
+    label: {
+      color: colors.textSecondary,
+      fontSize: 12,
+      fontWeight: 'bold',
+      marginBottom: 8,
+    },
+    inputContainer: {
+      backgroundColor: colors.surface,
+      borderRadius: 12,
+      paddingHorizontal: 16,
+      paddingVertical: 16,
+      borderWidth: 1,
+      borderColor: colors.border,
+      flexDirection: 'row',
+      alignItems: 'center',
+    },
+    input: {
+      color: colors.text,
+      fontSize: 18,
+      fontWeight: 'bold',
+      flex: 1,
+    },
+    amountInput: {
+      color: colors.text,
+      fontSize: 30,
+      fontWeight: 'bold',
+      flex: 1,
+      marginLeft: 8,
+    },
+    currencySymbol: {
+      color: colors.primary,
+      fontWeight: 'bold',
+      fontSize: 24,
+    },
+    categoryBtn: {
+      paddingHorizontal: 16,
+      paddingVertical: 10,
+      borderRadius: 12,
+      marginRight: 8,
+      borderWidth: 1,
+    },
+    categoryBtnActive: {
+      backgroundColor: colors.primary,
+      borderColor: colors.primary,
+    },
+    categoryBtnInactive: {
+      backgroundColor: colors.surface,
+      borderColor: colors.border,
+    },
+    categoryTextActive: {
+      color: '#fff',
+      fontWeight: 'bold',
+      fontSize: 14,
+    },
+    categoryTextInactive: {
+      color: colors.textSecondary,
+      fontWeight: 'bold',
+      fontSize: 14,
+    },
+    splitTypeContainer: {
+      flexDirection: 'row',
+      gap: 8,
+    },
+    splitTypeBtn: {
+      flex: 1,
+      paddingVertical: 12,
+      borderRadius: 12,
+      borderWidth: 1,
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: 8,
+    },
+    splitTypeBtnActive: {
+      backgroundColor: colors.primary,
+      borderColor: colors.primary,
+    },
+    splitTypeBtnInactive: {
+      backgroundColor: colors.surface,
+      borderColor: colors.border,
+    },
+    splitTypeTextActive: {
+      color: '#fff',
+      fontWeight: 'bold',
+      fontSize: 14,
+    },
+    splitTypeTextInactive: {
+      color: colors.textSecondary,
+      fontWeight: 'bold',
+      fontSize: 14,
+    },
+    selectionItem: {
+      backgroundColor: colors.surface,
+      borderRadius: 12,
+      padding: 12,
+      flexDirection: 'row',
+      alignItems: 'center',
+      borderWidth: 1,
+      marginBottom: 8,
+    },
+    selectionIcon: {
+      height: 32,
+      width: 32,
+      borderRadius: 8,
+      backgroundColor: colors.surfaceActive,
+      alignItems: 'center',
+      justifyContent: 'center',
+      marginRight: 12,
+    },
+    itemText: {
+      color: colors.text,
+      fontWeight: 'bold',
+      flex: 1,
+    },
+    emptyState: {
+      backgroundColor: colors.surface,
+      borderRadius: 12,
+      padding: 16,
+      alignItems: 'center',
+      justifyContent: 'center',
+      borderWidth: 1,
+      borderColor: colors.border,
+      borderStyle: 'dashed',
+    },
+    submitBtn: {
+      height: 56,
+      borderRadius: 12,
+      alignItems: 'center',
+      justifyContent: 'center',
+      marginBottom: 40,
+      backgroundColor: loading ? colors.surfaceActive : colors.primary,
+    },
+    submitBtnText: {
+      color: '#fff',
+      fontWeight: 'bold',
+      fontSize: 16,
+    },
+    customSplitRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      marginBottom: 12,
+    },
+    avatar: {
+      height: 32,
+      width: 32,
+      borderRadius: 16,
+      backgroundColor: colors.surfaceActive,
+      alignItems: 'center',
+      justifyContent: 'center',
+      marginRight: 12,
+    },
+    avatarText: {
+      color: colors.text,
+      fontWeight: 'bold',
+      fontSize: 12,
+    },
+    splitInputContainer: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      backgroundColor: colors.surface,
+      borderRadius: 8,
+      paddingHorizontal: 12,
+      paddingVertical: 8,
+      borderWidth: 1,
+      borderColor: colors.border,
+    },
+    splitInput: {
+      color: colors.text,
+      fontWeight: 'bold',
+      fontSize: 16,
+      width: 64,
+      textAlign: 'center',
+    },
+  }), [colors, isDark, loading]);
+
   return (
-    <SafeAreaView className="flex-1 bg-[#020617]" edges={['top']}>
+    <SafeAreaView style={styles.container} edges={['top']}>
       <KeyboardAvoidingView 
         behavior={Platform.OS === "ios" ? "padding" : "height"}
-        className="flex-1 px-5"
+        style={{ flex: 1, paddingHorizontal: 20 }}
       >
         {/* Header */}
-        <View className="flex-row items-center mb-6 mt-4">
-          <TouchableOpacity onPress={() => router.back()} className="h-10 w-10 bg-slate-800 rounded-xl items-center justify-center mr-4">
-            <Ionicons name="arrow-back" size={20} color="#94a3b8" />
+        <View style={styles.header}>
+          <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
+            <Ionicons name="arrow-back" size={20} color={colors.textSecondary} />
           </TouchableOpacity>
-          <Text className="text-xl font-bold text-white">Add Expense</Text>
+          <Text style={styles.headerTitle}>Add Expense</Text>
         </View>
 
         <ScrollView showsVerticalScrollIndicator={false}>
           {/* Title & Amount */}
-          <View className="mb-5">
-            <Text className="text-slate-500 text-xs font-bold mb-2">What was it for?</Text>
-            <TextInput
-              className="bg-slate-900 rounded-xl px-4 py-4 text-white text-lg font-bold border border-slate-800"
-              placeholder="e.g., Dinner, Uber, Groceries"
-              placeholderTextColor="#475569"
-              value={title}
-              onChangeText={setTitle}
-            />
+          <View style={styles.section}>
+            <Text style={styles.label}>What was it for?</Text>
+            <View style={styles.inputContainer}>
+              <TextInput
+                style={styles.input}
+                placeholder="e.g., Dinner, Uber, Groceries"
+                placeholderTextColor={colors.textMuted}
+                value={title}
+                onChangeText={setTitle}
+              />
+            </View>
           </View>
 
-          <View className="mb-5">
-            <Text className="text-slate-500 text-xs font-bold mb-2">How much?</Text>
-            <View className="bg-slate-900 rounded-xl px-4 flex-row items-center border border-slate-800">
-              <Text className="text-primary font-bold text-2xl">₹</Text>
+          <View style={styles.section}>
+            <Text style={styles.label}>How much?</Text>
+            <View style={styles.inputContainer}>
+              <Text style={styles.currencySymbol}>₹</Text>
               <TextInput
-                className="flex-1 px-2 py-4 text-white text-3xl font-bold"
+                style={styles.amountInput}
                 placeholder="0.00"
-                placeholderTextColor="#1e293b"
+                placeholderTextColor={colors.textMuted}
                 value={amount}
                 onChangeText={setAmount}
                 keyboardType="numeric"
@@ -217,17 +463,22 @@ export default function AddExpenseScreen() {
             </View>
           </View>
 
+          {/* Currency */}
+          <View style={styles.section}>
+            <Text style={styles.label}>Currency</Text>
+            <CurrencySelector selectedCurrency={currency} onSelect={setCurrency} />
+          </View>
+
           {/* Date Picker */}
-          <View className="mb-5">
-            <Text className="text-slate-500 text-xs font-bold mb-2">When?</Text>
+          <View style={styles.section}>
+            <Text style={styles.label}>When?</Text>
             <TouchableOpacity 
               onPress={() => setShowDatePicker(true)}
-              className="bg-slate-900 rounded-xl px-4 py-4 flex-row items-center border border-slate-800"
+              style={styles.inputContainer}
             >
-              <Ionicons name="calendar" size={20} color="#38bdf8" />
-              <Text className="text-white font-bold ml-3">{formatDate(expenseDate)}</Text>
-              <View className="flex-1" />
-              <Ionicons name="chevron-down" size={18} color="#475569" />
+              <Ionicons name="calendar" size={20} color={colors.primary} />
+              <Text style={[styles.input, { marginLeft: 12 }]}>{formatDate(expenseDate)}</Text>
+              <Ionicons name="chevron-down" size={18} color={colors.textSecondary} />
             </TouchableOpacity>
           </View>
 
@@ -241,35 +492,40 @@ export default function AddExpenseScreen() {
                 if (date) setExpenseDate(date);
               }}
               maximumDate={new Date()}
-              themeVariant="dark"
+              themeVariant={isDark ? "dark" : "light"}
             />
           )}
 
           {/* Notes */}
-          <View className="mb-5">
-            <Text className="text-slate-500 text-xs font-bold mb-2">Notes (optional)</Text>
-            <TextInput
-              className="bg-slate-900 rounded-xl px-4 py-4 text-white  border border-slate-800"
-              placeholder="Add any details..."
-              placeholderTextColor="#475569"
-              value={notes}
-              onChangeText={setNotes}
-              multiline
-              numberOfLines={2}
-            />
+          <View style={styles.section}>
+            <Text style={styles.label}>Notes (optional)</Text>
+            <View style={styles.inputContainer}>
+              <TextInput
+                style={styles.input}
+                placeholder="Add any details..."
+                placeholderTextColor={colors.textMuted}
+                value={notes}
+                onChangeText={setNotes}
+                multiline
+                numberOfLines={2}
+              />
+            </View>
           </View>
 
           {/* Category */}
-          <View className="mb-5">
-            <Text className="text-slate-500 text-xs font-bold mb-2">Category</Text>
+          <View style={styles.section}>
+            <Text style={styles.label}>Category</Text>
             <ScrollView horizontal showsHorizontalScrollIndicator={false}>
               {CATEGORIES.map((cat) => (
                 <TouchableOpacity
                   key={cat}
                   onPress={() => setCategory(cat)}
-                  className={`px-4 py-2.5 rounded-xl mr-2 border ${category === cat ? 'bg-primary border-primary' : 'bg-slate-900 border-slate-800'}`}
+                  style={[
+                    styles.categoryBtn,
+                    category === cat ? styles.categoryBtnActive : styles.categoryBtnInactive
+                  ]}
                 >
-                  <Text className={`font-bold text-sm ${category === cat ? 'text-[#020617]' : 'text-slate-400'}`}>
+                  <Text style={category === cat ? styles.categoryTextActive : styles.categoryTextInactive}>
                     {cat}
                   </Text>
                 </TouchableOpacity>
@@ -277,18 +533,47 @@ export default function AddExpenseScreen() {
             </ScrollView>
           </View>
 
+          {/* Payer Selection */}
+          <View style={styles.section}>
+            <Text style={styles.label}>Who paid?</Text>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+              {participants.map((p) => {
+                const isSelected = payerId === p.id;
+                return (
+                  <TouchableOpacity
+                    key={p.id}
+                    onPress={() => setPayerId(p.id)}
+                    style={[
+                      styles.categoryBtn,
+                      { flexDirection: 'row', alignItems: 'center' },
+                      isSelected ? styles.categoryBtnActive : styles.categoryBtnInactive
+                    ]}
+                  >
+                    {isSelected && <Ionicons name="checkmark-circle" size={16} color="#fff" style={{ marginRight: 6 }} />}
+                    <Text style={isSelected ? styles.categoryTextActive : styles.categoryTextInactive}>
+                      {p.id === currentUser?.id ? "You" : p.name.split(' ')[0]}
+                    </Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </ScrollView>
+          </View>
+
           {/* Split Type */}
-          <View className="mb-5">
-            <Text className="text-slate-500 text-xs font-bold mb-2">How to split?</Text>
-            <View className="flex-row gap-2">
+          <View style={styles.section}>
+            <Text style={styles.label}>How to split?</Text>
+            <View style={styles.splitTypeContainer}>
               {SPLIT_TYPES.map((st) => (
                 <TouchableOpacity
                   key={st.key}
                   onPress={() => setSplitType(st.key as any)}
-                  className={`flex-1 py-3 rounded-xl border flex-row items-center justify-center gap-2 ${splitType === st.key ? 'bg-indigo-500 border-indigo-500' : 'bg-slate-900 border-slate-800'}`}
+                  style={[
+                    styles.splitTypeBtn,
+                    splitType === st.key ? styles.splitTypeBtnActive : styles.splitTypeBtnInactive
+                  ]}
                 >
-                  <Ionicons name={st.icon as any} size={14} color={splitType === st.key ? "#fff" : "#64748b"} />
-                  <Text className={`font-bold text-sm ${splitType === st.key ? 'text-white' : 'text-slate-500'}`}>
+                  <Ionicons name={st.icon as any} size={14} color={splitType === st.key ? "#fff" : colors.textSecondary} />
+                  <Text style={splitType === st.key ? styles.splitTypeTextActive : styles.splitTypeTextInactive}>
                     {st.label}
                   </Text>
                 </TouchableOpacity>
@@ -297,96 +582,167 @@ export default function AddExpenseScreen() {
           </View>
 
           {/* Select Group or Friend */}
-          <View className="mb-5">
-            <Text className="text-slate-500 text-xs font-bold mb-3">Split with</Text>
+          <View style={styles.section}>
+            <Text style={[styles.label, { marginBottom: 12 }]}>Split with</Text>
             
-            {groups && groups.length > 0 && (
-              <>
-                <Text className="text-white font-bold text-xs mb-2">Groups</Text>
-                <View className="gap-2 mb-4">
-                  {groups.map((g) => (
-                    <TouchableOpacity
-                      key={g.id}
-                      onPress={() => { setGroupId(g.id); setFriendId(null); }}
-                      className={`bg-slate-900 rounded-xl p-3 flex-row items-center border ${groupId === g.id ? 'border-primary' : 'border-slate-800'}`}
-                    >
-                      <View className="h-8 w-8 rounded-lg bg-slate-800 items-center justify-center mr-3">
-                        <Ionicons name="people" size={16} color="#94a3b8" />
-                      </View>
-                      <Text className="text-white font-bold flex-1">{g.name}</Text>
-                      {groupId === g.id && <Ionicons name="checkmark-circle" size={20} color="#38bdf8" />}
-                    </TouchableOpacity>
-                  ))}
-                </View>
-              </>
-            )}
+            {/* Selected Participants Chips */}
+            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 16 }}>
+               <View style={{ 
+                 backgroundColor: colors.primary + '20', 
+                 paddingHorizontal: 12, 
+                 paddingVertical: 6, 
+                 borderRadius: 20,
+                 flexDirection: 'row',
+                 alignItems: 'center',
+                 borderWidth: 1,
+                 borderColor: colors.primary + '40'
+               }}>
+                 <Text style={{ color: colors.primary, fontWeight: 'bold', fontSize: 12 }}>You</Text>
+               </View>
+               
+               {groupId ? (
+                 <View style={{ 
+                   backgroundColor: colors.surfaceActive, 
+                   paddingHorizontal: 12, 
+                   paddingVertical: 6, 
+                   borderRadius: 20,
+                   flexDirection: 'row',
+                   alignItems: 'center',
+                   borderWidth: 1,
+                   borderColor: colors.border
+                 }}>
+                   <Ionicons name="people" size={14} color={colors.textSecondary} style={{ marginRight: 6 }} />
+                   <Text style={{ color: colors.text, fontWeight: 'bold', fontSize: 12 }}>
+                     Group: {groups?.find(g => g.id === groupId)?.name}
+                   </Text>
+                   <TouchableOpacity onPress={() => setGroupId(null)} style={{ marginLeft: 8 }}>
+                     <Ionicons name="close-circle" size={16} color={colors.textTertiary} />
+                   </TouchableOpacity>
+                 </View>
+               ) : (
+                 selectedFriendIds.map(fId => {
+                   const f = friends?.find(x => x.id === fId);
+                   return (
+                     <View key={fId} style={{ 
+                       backgroundColor: colors.surfaceActive, 
+                       paddingHorizontal: 12, 
+                       paddingVertical: 6, 
+                       borderRadius: 20,
+                       flexDirection: 'row',
+                       alignItems: 'center',
+                       borderWidth: 1,
+                       borderColor: colors.border
+                     }}>
+                       <Text style={{ color: colors.text, fontWeight: 'bold', fontSize: 12 }}>{f?.name || "Friend"}</Text>
+                       <TouchableOpacity onPress={() => toggleFriend(fId)} style={{ marginLeft: 8 }}>
+                         <Ionicons name="close-circle" size={16} color={colors.textTertiary} />
+                       </TouchableOpacity>
+                     </View>
+                   );
+                 })
+               )}
+            </View>
 
-            {loadingGroups && <ActivityIndicator color="#38bdf8" className="mb-4" />}
+            <View style={[styles.inputContainer, { paddingVertical: 10, marginBottom: 16 }]}>
+              <Ionicons name="search" size={20} color={colors.textTertiary} />
+              <TextInput
+                style={[styles.input, { fontSize: 14, marginLeft: 8 }]}
+                placeholder="Search friends or groups..."
+                placeholderTextColor={colors.textMuted}
+                value={searchQuery}
+                onChangeText={setSearchQuery}
+              />
+              {searchQuery.length > 0 && (
+                <TouchableOpacity onPress={() => setSearchQuery("")}>
+                  <Ionicons name="close-circle" size={18} color={colors.textSecondary} />
+                </TouchableOpacity>
+              )}
+            </View>
 
-            {friends && friends.length > 0 && (
-              <>
-                <Text className="text-white font-bold text-xs mb-2">Friends</Text>
-                <View className="gap-2">
-                  {friends.map((f) => (
+            {searchQuery.length > 0 && (
+              <View style={{ backgroundColor: colors.surface, borderRadius: 16, padding: 8, borderWidth: 1, borderColor: colors.border, marginBottom: 16 }}>
+                {/* Search Groups */}
+                {groups?.filter(g => g.name.toLowerCase().includes(searchQuery.toLowerCase())).map(g => (
+                  <TouchableOpacity
+                    key={g.id}
+                    onPress={() => { 
+                      setGroupId(g.id); 
+                      setSelectedFriendIds([]); 
+                      setSearchQuery("");
+                    }}
+                    style={{ padding: 12, flexDirection: 'row', alignItems: 'center', borderBottomWidth: 1, borderBottomColor: colors.border }}
+                  >
+                    <Ionicons name="people-outline" size={20} color={colors.textSecondary} style={{ marginRight: 12 }} />
+                    <Text style={{ color: colors.text, fontWeight: 'bold', flex: 1 }}>{g.name}</Text>
+                    <Text style={{ color: colors.textTertiary, fontSize: 10 }}>Group</Text>
+                  </TouchableOpacity>
+                ))}
+
+                {/* Search Friends */}
+                {filteredFriends.map(f => {
+                  const isSelected = selectedFriendIds.includes(f.id);
+                  return (
                     <TouchableOpacity
                       key={f.id}
-                      onPress={() => { setFriendId(f.id); setGroupId(null); }}
-                      className={`bg-slate-900 rounded-xl p-3 flex-row items-center border ${friendId === f.id ? 'border-primary' : 'border-slate-800'}`}
+                      onPress={() => { toggleFriend(f.id); setSearchQuery(""); }}
+                      style={{ padding: 12, flexDirection: 'row', alignItems: 'center', borderBottomWidth: 1, borderBottomColor: colors.border }}
                     >
-                      <View className="h-8 w-8 rounded-lg bg-slate-800 items-center justify-center mr-3">
-                        <Ionicons name="person" size={16} color="#94a3b8" />
-                      </View>
-                      <Text className="text-white font-bold flex-1">{f.name}</Text>
-                      {friendId === f.id && <Ionicons name="checkmark-circle" size={20} color="#38bdf8" />}
+                      <Ionicons name="person-outline" size={20} color={colors.textSecondary} style={{ marginRight: 12 }} />
+                      <Text style={{ color: colors.text, fontWeight: 'bold', flex: 1 }}>{f.name}</Text>
+                      {isSelected && <Ionicons name="checkmark" size={20} color={colors.primary} />}
                     </TouchableOpacity>
-                  ))}
-                </View>
-              </>
+                  );
+                })}
+
+                {filteredFriends.length === 0 && !groups?.some(g => g.name.toLowerCase().includes(searchQuery.toLowerCase())) && (
+                  <View style={{ padding: 20, alignItems: 'center' }}>
+                    <Text style={{ color: colors.textSecondary }}>No friends or groups found</Text>
+                    <TouchableOpacity onPress={() => router.push("/new/friend")}>
+                      <Text style={{ color: colors.primary, fontWeight: 'bold', marginTop: 8 }}>Add New Friend</Text>
+                    </TouchableOpacity>
+                  </View>
+                )}
+              </View>
             )}
 
-            {loadingFriends && <ActivityIndicator color="#38bdf8" />}
-
-            {!loadingGroups && !loadingFriends && (!groups?.length && !friends?.length) && (
-              <View className="bg-slate-900/50 rounded-xl p-4 items-center">
-                <Text className="text-slate-500 text-sm">No groups or friends yet</Text>
-                <TouchableOpacity 
-                  onPress={() => router.push("/new/friend")}
-                  className="mt-2"
-                >
-                  <Text className="text-primary font-bold">Add a friend</Text>
-                </TouchableOpacity>
+            {!searchQuery && !groupId && selectedFriendIds.length === 0 && (
+              <View style={styles.emptyState}>
+                <Ionicons name="search-outline" size={24} color={colors.textMuted} style={{ marginBottom: 8 }} />
+                <Text style={{ color: colors.textSecondary, fontSize: 12, textAlign: 'center' }}>
+                  Search for friends or groups to split this expense
+                </Text>
               </View>
             )}
           </View>
 
           {/* Custom Splits */}
           {splitType !== "EQUAL" && participants.length > 0 && (
-            <View className="mb-5 bg-slate-900/50 rounded-xl p-4 border border-slate-800">
-              <Text className="text-slate-500 text-xs font-bold mb-3">
+            <View style={[styles.section, { backgroundColor: colors.surface, padding: 16, borderRadius: 12, borderWidth: 1, borderColor: colors.border }]}>
+              <Text style={styles.label}>
                 {splitType === "PERCENTAGE" ? "Set percentages" : "Set amounts"}
               </Text>
               {participants.map((p) => (
-                <View key={p.id} className="flex-row items-center mb-3">
-                  <View className="h-8 w-8 rounded-full bg-slate-800 items-center justify-center mr-3">
-                    <Text className="text-white font-bold text-xs">{p.name.charAt(0)}</Text>
+                <View key={p.id} style={styles.customSplitRow}>
+                  <View style={styles.avatar}>
+                    <Text style={styles.avatarText}>{p.name.charAt(0)}</Text>
                   </View>
-                  <Text className="text-white  flex-1" numberOfLines={1}>{p.name}</Text>
-                  <View className="flex-row items-center bg-slate-800 rounded-lg px-3 py-2">
-                    {splitType === "EXACT" && <Text className="text-slate-500  mr-1">₹</Text>}
+                  <Text style={[styles.itemText, { marginRight: 12 }]} numberOfLines={1}>{p.name}</Text>
+                  <View style={styles.splitInputContainer}>
+                    {splitType === "EXACT" && <Text style={{ color: colors.textSecondary, marginRight: 4 }}>₹</Text>}
                     <TextInput
-                      className="text-white font-bold text-base w-16 text-center"
+                      style={styles.splitInput}
                       value={customSplits[p.id] || ""}
                       onChangeText={(v) => setCustomSplits(prev => ({ ...prev, [p.id]: v }))}
                       keyboardType="numeric"
                       placeholder="0"
-                      placeholderTextColor="#475569"
+                      placeholderTextColor={colors.textMuted}
                     />
-                    {splitType === "PERCENTAGE" && <Text className="text-slate-500  ml-1">%</Text>}
+                    {splitType === "PERCENTAGE" && <Text style={{ color: colors.textSecondary, marginLeft: 4 }}>%</Text>}
                   </View>
                 </View>
               ))}
-              <View className="flex-row justify-end mt-2">
-                <Text className="text-slate-400 text-xs ">
+              <View style={{ flexDirection: 'row', justifyContent: 'flex-end', marginTop: 8 }}>
+                <Text style={{ color: colors.textSecondary, fontSize: 12 }}>
                   Total: {splitType === "PERCENTAGE" 
                     ? `${Object.values(customSplits).reduce((s, v) => s + (parseFloat(v) || 0), 0).toFixed(0)}%`
                     : `₹${Object.values(customSplits).reduce((s, v) => s + (parseFloat(v) || 0), 0).toFixed(2)}`
@@ -398,11 +754,11 @@ export default function AddExpenseScreen() {
 
           {/* Submit Button */}
           <TouchableOpacity
-            className={`h-14 rounded-xl items-center justify-center mb-10 ${loading ? 'bg-slate-800' : 'bg-primary'}`}
+            style={styles.submitBtn}
             onPress={handleCreate}
             disabled={loading}
           >
-            <Text className="text-[#020617] font-bold text-base">
+            <Text style={styles.submitBtnText}>
               {loading ? "Adding..." : "Add Expense"}
             </Text>
           </TouchableOpacity>

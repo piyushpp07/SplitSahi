@@ -1,4 +1,4 @@
-import { View, Text, TouchableOpacity, Alert, ScrollView, Share } from "react-native";
+import { View, Text, TouchableOpacity, Alert, ScrollView, Share, StyleSheet } from "react-native";
 import { router } from "expo-router";
 import { useAuthStore } from "@/store/authStore";
 import { Ionicons } from "@expo/vector-icons";
@@ -6,9 +6,11 @@ import { apiGet } from "@/lib/api";
 import * as FileSystem from 'expo-file-system';
 import * as Sharing from 'expo-sharing';
 import { SafeAreaView } from "react-native-safe-area-context";
+import { useTheme } from "@/contexts/ThemeContext";
 
 export default function ProfileScreen() {
   const { user, logout } = useAuthStore();
+  const { colors, isDark } = useTheme();
 
   async function handleLogout() {
     Alert.alert("Logout", "Are you sure you want to logout?", [
@@ -71,53 +73,184 @@ export default function ProfileScreen() {
     }
   }
 
+  const styles = StyleSheet.create({
+    container: {
+      flex: 1,
+      backgroundColor: colors.background,
+    },
+    header: {
+      alignItems: 'center',
+      marginTop: 24,
+      marginBottom: 32,
+    },
+    avatar: {
+      height: 96,
+      width: 96,
+      borderRadius: 48,
+      backgroundColor: colors.surfaceActive,
+      alignItems: 'center',
+      justifyContent: 'center',
+      marginBottom: 16,
+      borderWidth: 4,
+      borderColor: colors.border,
+      shadowColor: "#000",
+      shadowOffset: { width: 0, height: 4 },
+      shadowOpacity: 0.1,
+      shadowRadius: 8,
+    },
+    avatarText: {
+      fontSize: 36,
+      fontWeight: 'bold',
+      color: colors.primary,
+    },
+    name: {
+      fontSize: 24,
+      fontWeight: 'bold',
+      color: colors.text,
+      marginBottom: 4,
+    },
+    email: {
+      fontSize: 14,
+      color: colors.textSecondary,
+      marginBottom: 16,
+    },
+    editBtn: {
+      backgroundColor: colors.surface,
+      paddingHorizontal: 20,
+      paddingVertical: 10,
+      borderRadius: 12,
+      flexDirection: 'row',
+      alignItems: 'center',
+      borderWidth: 1,
+      borderColor: colors.border,
+    },
+    editBtnText: {
+      color: colors.textSecondary,
+      fontWeight: 'bold',
+      fontSize: 12,
+      marginLeft: 8,
+      textTransform: 'uppercase',
+      letterSpacing: 1,
+    },
+    section: {
+      backgroundColor: colors.surface,
+      borderRadius: 20,
+      padding: 20,
+      marginBottom: 24,
+      borderWidth: 1,
+      borderColor: colors.border,
+    },
+    sectionTitle: {
+      color: colors.textSecondary,
+      fontSize: 10,
+      fontWeight: 'bold',
+      letterSpacing: 2,
+      marginBottom: 16,
+      textTransform: 'uppercase',
+    },
+    infoRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      marginBottom: 16,
+      paddingBottom: 16,
+      borderBottomWidth: 1,
+      borderBottomColor: colors.border,
+    },
+    infoIcon: {
+      height: 40,
+      width: 40,
+      borderRadius: 12,
+      backgroundColor: colors.surfaceActive,
+      alignItems: 'center',
+      justifyContent: 'center',
+      marginRight: 16,
+    },
+    infoLabel: {
+      color: colors.textTertiary,
+      fontSize: 12,
+      marginBottom: 4,
+      fontWeight: 'bold',
+    },
+    infoValue: {
+      color: colors.text,
+      fontWeight: 'bold',
+      fontSize: 14,
+    },
+    menuContainer: {
+      gap: 12,
+    },
+    menuItem: {
+      backgroundColor: colors.surface,
+      borderRadius: 16,
+      padding: 16,
+      flexDirection: 'row',
+      alignItems: 'center',
+      borderWidth: 1,
+      borderColor: colors.border,
+    },
+    menuIcon: {
+      height: 40,
+      width: 40,
+      borderRadius: 12,
+      backgroundColor: colors.surfaceActive,
+      alignItems: 'center',
+      justifyContent: 'center',
+      marginRight: 16,
+    },
+    menuText: {
+      color: colors.text,
+      fontWeight: 'bold',
+      flex: 1,
+    }
+  });
+
   return (
-    <SafeAreaView className="flex-1 bg-[#020617]" edges={['top', 'left', 'right']}>
+    <SafeAreaView style={styles.container} edges={['top', 'left', 'right']}>
       <ScrollView 
-        className="flex-1" 
+        style={{ flex: 1 }}
         contentContainerStyle={{ padding: 24, paddingBottom: 150 }}
         showsVerticalScrollIndicator={false}
       >
         {/* Profile Header */}
-        <View className="items-center mb-10 mt-6">
-          <View className="h-24 w-24 rounded-full bg-primary items-center justify-center mb-4 border-4 border-slate-900 shadow-xl">
-            <Text className="text-4xl text-[#020617] font-bold">
+        <View style={styles.header}>
+          <View style={styles.avatar}>
+            <Text style={styles.avatarText}>
               {user?.name?.charAt(0).toUpperCase() ?? "U"}
             </Text>
           </View>
-          <Text className="text-2xl font-bold text-white mb-1">{user?.name ?? "User"}</Text>
-          <Text className="text-slate-500 text-sm mb-4">{user?.email ?? "user@example.com"}</Text>
+          <Text style={styles.name}>{user?.name ?? "User"}</Text>
+          <Text style={styles.email}>{user?.email ?? "user@example.com"}</Text>
           
           <TouchableOpacity 
             onPress={() => router.push("/edit-profile")}
-            className="bg-slate-800 px-5 py-2.5 rounded-xl flex-row items-center border border-slate-700"
+            style={styles.editBtn}
           >
-            <Ionicons name="pencil" size={14} color="#94a3b8" />
-            <Text className="text-slate-300 font-bold text-xs ml-2 uppercase tracking-wide">Edit Profile</Text>
+            <Ionicons name="pencil" size={14} color={colors.textSecondary} />
+            <Text style={styles.editBtnText}>Edit Profile</Text>
           </TouchableOpacity>
         </View>
 
         {/* Account Info */}
-        <View className="bg-slate-900/50 rounded-2xl p-5 mb-6 border border-slate-800">
-          <Text className="text-slate-500 text-xs font-bold uppercase tracking-widest mb-4">Account Details</Text>
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Account Details</Text>
           
-          <View className="flex-row items-center mb-4 pb-4 border-b border-slate-800/50">
-            <View className="h-10 w-10 rounded-xl bg-slate-800 items-center justify-center mr-4">
-              <Ionicons name="call-outline" size={18} color="#94a3b8" />
+          <View style={styles.infoRow}>
+            <View style={styles.infoIcon}>
+              <Ionicons name="call-outline" size={18} color={colors.textSecondary} />
             </View>
             <View>
-              <Text className="text-slate-500 text-xs mb-0.5">Phone Number</Text>
-              <Text className="text-slate-500 font-bold">{user?.phone || "Not scheduled"}</Text>
+              <Text style={styles.infoLabel}>Phone Number</Text>
+              <Text style={styles.infoValue}>{user?.phone || "Not scheduled"}</Text>
             </View>
           </View>
           
-          <View className="flex-row items-center">
-            <View className="h-10 w-10 rounded-xl bg-slate-800 items-center justify-center mr-4">
-              <Ionicons name="card-outline" size={18} color="#38bdf8" />
+          <View style={[styles.infoRow, { borderBottomWidth: 0, marginBottom: 0, paddingBottom: 0 }]}>
+            <View style={styles.infoIcon}>
+              <Ionicons name="card-outline" size={18} color={colors.primary} />
             </View>
-            <View className="flex-1">
-              <Text className="text-slate-500 text-xs mb-0.5">UPI ID</Text>
-              <Text className="text-primary font-bold" numberOfLines={1}>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.infoLabel}>UPI ID</Text>
+              <Text style={[styles.infoValue, { color: colors.primary }]} numberOfLines={1}>
                 {user?.upiId || "Not connected"}
               </Text>
             </View>
@@ -125,48 +258,72 @@ export default function ProfileScreen() {
         </View>
 
         {/* Menu Options */}
-        <View className="gap-3">
+        <View style={styles.menuContainer}>
           <TouchableOpacity 
-            className="bg-slate-900/50 rounded-xl p-4 flex-row items-center border border-slate-800"
+            style={styles.menuItem}
             onPress={() => router.push("/friends")}
           >
-            <View className="h-10 w-10 rounded-xl bg-slate-800 items-center justify-center mr-4">
-              <Ionicons name="people-outline" size={20} color="#38bdf8" />
+            <View style={styles.menuIcon}>
+              <Ionicons name="people-outline" size={20} color={colors.primary} />
             </View>
-            <Text className="text-white font-bold flex-1">My Friends</Text>
-            <Ionicons name="chevron-forward" size={18} color="#475569" />
+            <Text style={styles.menuText}>My Friends</Text>
+            <Ionicons name="chevron-forward" size={18} color={colors.textTertiary} />
           </TouchableOpacity>
 
           <TouchableOpacity 
-            className="bg-slate-900/50 rounded-xl p-4 flex-row items-center border border-slate-800"
+            style={styles.menuItem}
             onPress={() => router.push("/preferences")}
           >
-            <View className="h-10 w-10 rounded-xl bg-slate-800 items-center justify-center mr-4">
-              <Ionicons name="settings-outline" size={20} color="#818cf8" />
+            <View style={styles.menuIcon}>
+              <Ionicons name="settings-outline" size={20} color={colors.info} />
             </View>
-            <Text className="text-white font-bold flex-1">Settings</Text>
-            <Ionicons name="chevron-forward" size={18} color="#475569" />
+            <Text style={styles.menuText}>Settings</Text>
+            <Ionicons name="chevron-forward" size={18} color={colors.textTertiary} />
           </TouchableOpacity>
 
           <TouchableOpacity 
-            className="bg-slate-900/50 rounded-xl p-4 flex-row items-center border border-slate-800"
+            style={styles.menuItem}
             onPress={handleExport}
           >
-            <View className="h-10 w-10 rounded-xl bg-slate-800 items-center justify-center mr-4">
-              <Ionicons name="download-outline" size={20} color="#10b981" />
+            <View style={styles.menuIcon}>
+              <Ionicons name="download-outline" size={20} color={colors.success} />
             </View>
-            <Text className="text-white font-bold flex-1">Export Data</Text>
-            <Ionicons name="chevron-forward" size={18} color="#475569" />
+            <Text style={styles.menuText}>Export Data</Text>
+            <Ionicons name="chevron-forward" size={18} color={colors.textTertiary} />
+          </TouchableOpacity>
+
+          <Text style={[styles.sectionTitle, { marginTop: 24, marginBottom: 12 }]}>Legal</Text>
+
+          <TouchableOpacity 
+            style={styles.menuItem}
+            onPress={() => router.push("/legal/privacy")}
+          >
+            <View style={styles.menuIcon}>
+              <Ionicons name="shield-checkmark-outline" size={20} color={colors.textSecondary} />
+            </View>
+            <Text style={styles.menuText}>Privacy Policy</Text>
+            <Ionicons name="chevron-forward" size={18} color={colors.textTertiary} />
           </TouchableOpacity>
 
           <TouchableOpacity 
-            className="bg-red-500/10 rounded-xl p-4 flex-row items-center mt-4 border border-red-500/10"
+            style={styles.menuItem}
+            onPress={() => router.push("/legal/terms")}
+          >
+            <View style={styles.menuIcon}>
+              <Ionicons name="document-text-outline" size={20} color={colors.textSecondary} />
+            </View>
+            <Text style={styles.menuText}>Terms of Service</Text>
+            <Ionicons name="chevron-forward" size={18} color={colors.textTertiary} />
+          </TouchableOpacity>
+
+          <TouchableOpacity 
+            style={[styles.menuItem, { backgroundColor: colors.errorLight, borderColor: colors.errorLight, marginTop: 12 }]}
             onPress={handleLogout}
           >
-            <View className="h-10 w-10 rounded-xl bg-red-500/10 items-center justify-center mr-4">
-              <Ionicons name="log-out-outline" size={20} color="#f87171" />
+            <View style={[styles.menuIcon, { backgroundColor: 'rgba(239, 68, 68, 0.2)' }]}>
+              <Ionicons name="log-out-outline" size={20} color={colors.error} />
             </View>
-            <Text className="text-red-400 font-bold flex-1">Logout</Text>
+            <Text style={[styles.menuText, { color: colors.error }]}>Logout</Text>
           </TouchableOpacity>
         </View>
       </ScrollView>

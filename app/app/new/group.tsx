@@ -5,6 +5,7 @@ import { apiGet, apiPost } from "@/lib/api";
 import { router } from "expo-router";
 import { useQuery } from "@tanstack/react-query";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { useTheme } from "@/contexts/ThemeContext";
 
 interface Friend {
   id: string;
@@ -13,10 +14,16 @@ interface Friend {
   avatarUrl?: string;
 }
 
+import AvatarPicker from "@/components/AvatarPicker";
+
 export default function CreateGroupScreen() {
+  const { colors, isDark } = useTheme();
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
+  const [imageUrl, setImageUrl] = useState("");
+  const [selectedAvatarId, setSelectedAvatarId] = useState<string | null>(null);
   const [selectedFriends, setSelectedFriends] = useState<string[]>([]);
+  const [searchQuery, setSearchQuery] = useState("");
   const [loading, setLoading] = useState(false);
 
   const { data: friends, isLoading } = useQuery({
@@ -30,6 +37,11 @@ export default function CreateGroupScreen() {
     );
   };
 
+  const filteredFriends = friends?.filter(f => 
+    f.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
+    f.email.toLowerCase().includes(searchQuery.toLowerCase())
+  ) || [];
+
   async function handleCreate() {
     if (!name.trim()) {
       Alert.alert("Required", "Please enter a group name");
@@ -40,6 +52,7 @@ export default function CreateGroupScreen() {
       await apiPost("/groups", {
         name: name.trim(),
         description: description.trim() || undefined,
+        imageUrl: imageUrl || undefined,
         memberIds: selectedFriends,
       });
       Alert.alert("Success", "Group created successfully!");
@@ -52,37 +65,72 @@ export default function CreateGroupScreen() {
   }
 
   return (
-    <SafeAreaView className="flex-1 bg-[#020617]" edges={['top']}>
+    <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }} edges={['top']}>
       <KeyboardAvoidingView 
         behavior={Platform.OS === "ios" ? "padding" : "height"}
-        className="flex-1 px-5"
+        style={{ flex: 1, paddingHorizontal: 20 }}
       >
-        <View className="flex-row items-center mb-6 mt-4">
-          <TouchableOpacity onPress={() => router.back()} className="h-10 w-10 bg-slate-800 rounded-xl items-center justify-center mr-4">
-            <Ionicons name="arrow-back" size={20} color="#94a3b8" />
+        <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 24, marginTop: 16 }}>
+          <TouchableOpacity 
+            onPress={() => router.back()} 
+            style={{ 
+              height: 40, width: 40, borderRadius: 12, 
+              backgroundColor: colors.surface, 
+              alignItems: 'center', justifyContent: 'center', 
+              marginRight: 16,
+              borderWidth: 1,
+              borderColor: colors.border
+            }}
+          >
+            <Ionicons name="arrow-back" size={20} color={colors.textSecondary} />
           </TouchableOpacity>
-          <Text className="text-xl font-bold text-white">New Group</Text>
+          <Text style={{ fontSize: 20, fontWeight: 'bold', color: colors.text }}>New Group</Text>
         </View>
 
         <ScrollView showsVerticalScrollIndicator={false}>
-          <View className="mb-6">
-            <View className="mb-5">
-              <Text className="text-slate-500 text-xs font-bold mb-2">Group Name</Text>
+          {/* Avatar Selection */}
+          <AvatarPicker 
+            label="Pick Group Icon" 
+            selectedId={selectedAvatarId} 
+            onSelect={(id, url) => {
+                setSelectedAvatarId(id);
+                setImageUrl(url);
+            }} 
+          />
+
+          <View style={{ marginBottom: 24 }}>
+            <View style={{ marginBottom: 20 }}>
+              <Text style={{ color: colors.textSecondary, fontSize: 12, fontWeight: 'bold', marginBottom: 8 }}>Group Name</Text>
               <TextInput
-                className="bg-slate-900 rounded-xl px-4 py-4 text-white  border border-slate-800"
+                style={{ 
+                  backgroundColor: colors.surface, 
+                  borderRadius: 12, 
+                  padding: 16, 
+                  color: colors.text, 
+                  borderWidth: 1, 
+                  borderColor: colors.border 
+                }}
                 placeholder="e.g. Goa Trip, Apartment 404"
-                placeholderTextColor="#475569"
+                placeholderTextColor={colors.textMuted}
                 value={name}
                 onChangeText={setName}
               />
             </View>
 
-            <View className="mb-5">
-              <Text className="text-slate-500 text-xs font-bold mb-2">Description (Optional)</Text>
+            <View style={{ marginBottom: 20 }}>
+              <Text style={{ color: colors.textSecondary, fontSize: 12, fontWeight: 'bold', marginBottom: 8 }}>Description (Optional)</Text>
               <TextInput
-                className="bg-slate-900 rounded-xl px-4 py-4 text-white  border border-slate-800"
+                style={{ 
+                  backgroundColor: colors.surface, 
+                  borderRadius: 12, 
+                  padding: 16, 
+                  color: colors.text, 
+                  borderWidth: 1, 
+                  borderColor: colors.border,
+                  minHeight: 80
+                }}
                 placeholder="What's this group for?"
-                placeholderTextColor="#475569"
+                placeholderTextColor={colors.textMuted}
                 value={description}
                 onChangeText={setDescription}
                 multiline
@@ -91,50 +139,119 @@ export default function CreateGroupScreen() {
             </View>
           </View>
 
-          <View className="mb-6">
-            <Text className="text-slate-500 text-xs font-bold mb-3">Add Members</Text>
+          <View style={{ marginBottom: 24 }}>
+            <Text style={{ color: colors.textSecondary, fontSize: 12, fontWeight: 'bold', marginBottom: 12 }}>Add Members</Text>
+            
+            {/* Friend Search Input */}
+            <View style={{ marginBottom: 16 }}>
+               <View style={{ 
+                backgroundColor: colors.surface, 
+                borderRadius: 12, 
+                borderWidth: 1, 
+                borderColor: colors.border, 
+                paddingHorizontal: 12, 
+                paddingVertical: 8, 
+                flexDirection: 'row', 
+                alignItems: 'center' 
+              }}>
+                <Ionicons name="search" size={16} color={colors.textTertiary} style={{ marginRight: 8 }} />
+                <TextInput
+                  style={{ flex: 1, padding: 4, color: colors.text, fontSize: 14 }}
+                  placeholder="Search friends..."
+                  placeholderTextColor={colors.textMuted}
+                  value={searchQuery}
+                  onChangeText={setSearchQuery}
+                />
+              </View>
+            </View>
+
             {isLoading ? (
-              <ActivityIndicator color="#38bdf8" />
+              <ActivityIndicator color={colors.primary} />
             ) : friends && friends.length > 0 ? (
-              <View className="gap-2">
-                {friends.map((item) => {
-                  const isSelected = selectedFriends.includes(item.id);
-                  return (
-                    <TouchableOpacity
-                      key={item.id}
-                      onPress={() => toggleFriend(item.id)}
-                      className={`bg-slate-900/50 rounded-xl p-3 flex-row items-center border ${isSelected ? 'border-primary' : 'border-slate-800'}`}
-                    >
-                      <View className="h-9 w-9 rounded-lg bg-slate-800 items-center justify-center mr-3">
-                        <Ionicons name="person" size={16} color="#94a3b8" />
-                      </View>
-                      <Text className="text-white  flex-1">{item.name}</Text>
-                      <View className={`h-6 w-6 rounded-full items-center justify-center border ${isSelected ? 'bg-primary border-primary' : 'border-slate-700'}`}>
-                        {isSelected && <Ionicons name="checkmark" size={14} color="#020617" />}
-                      </View>
-                    </TouchableOpacity>
-                  );
-                })}
+              <View style={{ gap: 8 }}>
+                {filteredFriends.length > 0 ? (
+                  filteredFriends.map((item) => {
+                    const isSelected = selectedFriends.includes(item.id);
+                    return (
+                      <TouchableOpacity
+                        key={item.id}
+                        onPress={() => toggleFriend(item.id)}
+                        style={{ 
+                          backgroundColor: colors.surface, 
+                          borderRadius: 12, 
+                          padding: 12, 
+                          flexDirection: 'row', 
+                          alignItems: 'center', 
+                          borderWidth: 1, 
+                          borderColor: isSelected ? colors.primary : colors.border 
+                        }}
+                      >
+                        <View style={{ 
+                          height: 36, width: 36, borderRadius: 18, 
+                          backgroundColor: colors.surfaceActive, 
+                          alignItems: 'center', justifyContent: 'center', 
+                          marginRight: 12 
+                        }}>
+                          <Ionicons name="person" size={16} color={colors.textSecondary} />
+                        </View>
+                        <Text style={{ color: colors.text, flex: 1 }}>{item.name}</Text>
+                        <View style={{ 
+                          height: 24, width: 24, borderRadius: 12, 
+                          alignItems: 'center', justifyContent: 'center', 
+                          borderWidth: 1, 
+                          borderColor: isSelected ? colors.primary : colors.textTertiary,
+                          backgroundColor: isSelected ? colors.primary : 'transparent'
+                        }}>
+                          {isSelected && <Ionicons name="checkmark" size={14} color="#fff" />}
+                        </View>
+                      </TouchableOpacity>
+                    );
+                  })
+                ) : (
+                  <View style={{ padding: 16, alignItems: 'center' }}>
+                     <Text style={{ color: colors.textSecondary }}>No matching friends found</Text>
+                  </View>
+                )}
               </View>
             ) : (
-              <View className="bg-slate-900/50 rounded-xl p-6 border border-dashed border-slate-800 items-center">
-                <Text className="text-slate-500  text-xs text-center">No friends yet. Add friends to include them in groups.</Text>
+              <View style={{ 
+                backgroundColor: colors.surface, 
+                borderRadius: 12, 
+                padding: 24, 
+                borderWidth: 1, 
+                borderColor: colors.border, 
+                borderStyle: 'dashed', 
+                alignItems: 'center' 
+              }}>
+                <Text style={{ color: colors.textSecondary, fontSize: 13, textAlign: 'center' }}>No friends yet. Add friends to include them in groups.</Text>
                 <TouchableOpacity 
                   onPress={() => router.push("/new/friend")}
-                  className="mt-3"
+                  style={{ marginTop: 12 }}
                 >
-                  <Text className="text-primary font-bold text-sm">Add a Friend</Text>
+                  <Text style={{ color: colors.primary, fontWeight: 'bold', fontSize: 14 }}>Add a Friend</Text>
                 </TouchableOpacity>
               </View>
             )}
           </View>
 
           <TouchableOpacity
-            className={`h-14 rounded-xl items-center justify-center mb-10 shadow-xl ${loading ? 'bg-slate-800' : 'bg-primary'}`}
+            style={{ 
+              height: 56, 
+              borderRadius: 12, 
+              alignItems: 'center', 
+              justifyContent: 'center', 
+              marginBottom: 40,
+              backgroundColor: loading ? colors.surfaceActive : colors.primary,
+              shadowColor: colors.primary,
+              shadowOffset: { width: 0, height: 4 },
+              shadowOpacity: 0.2,
+              shadowRadius: 8,
+              elevation: 4
+            }}
             onPress={handleCreate}
             disabled={loading}
           >
-            <Text className="text-[#020617] font-bold text-base">
+            <Text style={{ color: '#fff', fontWeight: 'bold', fontSize: 16 }}>
               {loading ? "Creating..." : "Create Group"}
             </Text>
           </TouchableOpacity>

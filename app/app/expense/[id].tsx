@@ -1,12 +1,12 @@
 import { useState, useEffect } from "react";
-import { View, Text, TextInput, TouchableOpacity, Alert, ActivityIndicator, ScrollView } from "react-native";
+import { View, Text, TextInput, TouchableOpacity, Alert, ActivityIndicator, ScrollView, Platform, KeyboardAvoidingView, StyleSheet } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { apiGet, apiPatch, apiDelete } from "@/lib/api";
 import { router, useLocalSearchParams } from "expo-router";
 import { useAuthStore } from "@/store/authStore";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { KeyboardAvoidingView, Platform } from "react-native";
+import { useTheme } from "@/contexts/ThemeContext";
 
 const CATEGORIES = ["Food", "Transport", "Shopping", "Entertainment", "Bills", "Other"];
 
@@ -28,6 +28,7 @@ interface Expense {
 }
 
 export default function ExpenseDetailScreen() {
+  const { colors } = useTheme();
   const { id } = useLocalSearchParams<{ id: string }>();
   const queryClient = useQueryClient();
   const currentUserId = useAuthStore((s) => s.user?.id);
@@ -92,48 +93,178 @@ export default function ExpenseDetailScreen() {
   }
 
   const canEdit = expense?.createdById === currentUserId;
+  const isAdmin = expense?.group && (expense as any).group.members?.some((m: any) => m.userId === currentUserId && m.role === "ADMIN");
 
   if (isLoading) {
     return (
-      <SafeAreaView className="flex-1 bg-[#020617] items-center justify-center" edges={['top']}>
-        <ActivityIndicator color="#38bdf8" size="large" />
+      <SafeAreaView style={{ flex: 1, backgroundColor: colors.background, alignItems: 'center', justifyContent: 'center' }} edges={['top']}>
+        <ActivityIndicator color={colors.primary} size="large" />
       </SafeAreaView>
     );
   }
 
   if (!expense) {
     return (
-      <SafeAreaView className="flex-1 bg-[#020617] items-center justify-center" edges={['top']}>
-        <Text className="text-white">Expense not found</Text>
+      <SafeAreaView style={{ flex: 1, backgroundColor: colors.background, alignItems: 'center', justifyContent: 'center' }} edges={['top']}>
+        <Text style={{ color: colors.text }}>Expense not found</Text>
       </SafeAreaView>
     );
   }
 
+  const styles = StyleSheet.create({
+    container: {
+      flex: 1,
+      backgroundColor: colors.background,
+    },
+    header: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      marginBottom: 24,
+      marginTop: 16,
+    },
+    backBtn: {
+      height: 40,
+      width: 40,
+      borderRadius: 12,
+      backgroundColor: colors.surface,
+      alignItems: 'center',
+      justifyContent: 'center',
+      borderWidth: 1,
+      borderColor: colors.border,
+    },
+    actionBtn: {
+      height: 40,
+      width: 40,
+      borderRadius: 12,
+      alignItems: 'center',
+      justifyContent: 'center',
+      borderWidth: 1,
+    },
+    label: {
+      fontSize: 10,
+      fontWeight: 'bold',
+      color: colors.textSecondary,
+      textTransform: 'uppercase',
+      letterSpacing: 2,
+      marginBottom: 8,
+    },
+    section: {
+      marginBottom: 24,
+    },
+    card: {
+      backgroundColor: colors.surface,
+      borderRadius: 24,
+      padding: 24,
+      borderWidth: 1,
+      borderColor: colors.border,
+    },
+    titleInputContainer: {
+      backgroundColor: colors.surface,
+      borderRadius: 20,
+      borderWidth: 1,
+      borderColor: colors.border,
+      padding: 4,
+    },
+    titleInput: {
+      paddingHorizontal: 20,
+      paddingVertical: 16,
+      color: colors.text,
+      fontSize: 20,
+      fontWeight: 'bold',
+    },
+    titleText: {
+      fontSize: 32,
+      fontWeight: 'bold',
+      color: colors.text,
+      letterSpacing: -1,
+      fontStyle: 'italic',
+    },
+    amountText: {
+      fontSize: 36,
+      fontWeight: 'bold',
+      color: colors.text,
+    },
+    categoryBtn: {
+      paddingHorizontal: 20,
+      paddingVertical: 10,
+      borderRadius: 16,
+      marginRight: 8,
+      borderWidth: 1,
+    },
+    categoryText: {
+      fontSize: 10,
+      fontWeight: 'bold',
+      textTransform: 'uppercase',
+      letterSpacing: 1,
+    },
+    rowCard: {
+      backgroundColor: colors.surface,
+      borderRadius: 16,
+      padding: 16,
+      flexDirection: 'row',
+      alignItems: 'center',
+      marginBottom: 8,
+      borderWidth: 1,
+      borderColor: colors.border,
+    },
+    avatar: {
+      height: 32,
+      width: 32,
+      borderRadius: 16,
+      backgroundColor: colors.surfaceActive,
+      alignItems: 'center',
+      justifyContent: 'center',
+      marginRight: 12,
+    },
+    avatarText: {
+      color: colors.text,
+      fontWeight: 'bold',
+      fontSize: 12,
+    },
+    mainBtn: {
+      height: 56,
+      borderRadius: 20,
+      alignItems: 'center',
+      justifyContent: 'center',
+      backgroundColor: saving ? colors.surfaceActive : colors.primary,
+    },
+    secondaryBtn: {
+      height: 56,
+      borderRadius: 20,
+      alignItems: 'center',
+      justifyContent: 'center',
+      backgroundColor: colors.surface,
+      borderWidth: 1,
+      borderColor: colors.border,
+    }
+  });
+
   return (
-    <SafeAreaView className="flex-1 bg-[#020617]" edges={['top']}>
+    <SafeAreaView style={styles.container} edges={['top']}>
       <KeyboardAvoidingView 
         behavior={Platform.OS === "ios" ? "padding" : "height"}
-        className="flex-1 px-6"
+        style={{ flex: 1, paddingHorizontal: 24 }}
       >
-        <View className="flex-row items-center justify-between mb-6 mt-4">
-          <TouchableOpacity onPress={() => router.back()} className="h-10 w-10 bg-slate-900 rounded-xl items-center justify-center border border-slate-800">
-            <Ionicons name="arrow-back" size={20} color="#94a3b8" />
+        <View style={styles.header}>
+          <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
+            <Ionicons name="arrow-back" size={20} color={colors.textSecondary} />
           </TouchableOpacity>
-          <View className="flex-row gap-2">
+          <View style={{ flexDirection: 'row', gap: 8 }}>
             {canEdit && !isEditing && (
               <TouchableOpacity 
                 onPress={() => setIsEditing(true)} 
-                className="h-10 w-10 bg-slate-900 rounded-xl items-center justify-center border border-slate-800"
+                style={[styles.actionBtn, { backgroundColor: colors.surface, borderColor: colors.border }]}
               >
-                <Ionicons name="pencil" size={18} color="#38bdf8" />
+                <Ionicons name="pencil" size={18} color={colors.info} />
               </TouchableOpacity>
             )}
             {canEdit && (
               <TouchableOpacity 
                 onPress={handleDelete} 
-                className="h-10 w-10 bg-red-500/10 rounded-xl items-center justify-center border border-red-500/20"
+                style={[styles.actionBtn, { backgroundColor: colors.errorLight, borderColor: colors.error }]}
               >
-                <Ionicons name="trash" size={18} color="#f87171" />
+                <Ionicons name="trash" size={18} color={colors.error} />
               </TouchableOpacity>
             )}
           </View>
@@ -141,130 +272,159 @@ export default function ExpenseDetailScreen() {
 
         <ScrollView showsVerticalScrollIndicator={false}>
           {/* Title */}
-          <View className="mb-6">
-            <Text className="text-slate-500 text-[10px] font-bold uppercase tracking-[2px] mb-2">Expense Title</Text>
+          <View style={styles.section}>
+            <Text style={styles.label}>Expense Title</Text>
             {isEditing ? (
-              <View className="bg-slate-900 rounded-[20px] border border-slate-800 p-1">
+              <View style={styles.titleInputContainer}>
                 <TextInput
-                  className="px-5 py-4 text-white text-xl font-bold"
+                  style={styles.titleInput}
                   value={title}
                   onChangeText={setTitle}
                   placeholder="Title"
-                  placeholderTextColor="#475569"
+                  placeholderTextColor={colors.textMuted}
                 />
               </View>
             ) : (
-              <Text className="text-white text-3xl font-bold tracking-tighter italic">{expense.title}</Text>
+              <Text style={styles.titleText}>{expense.title}</Text>
             )}
           </View>
 
           {/* Amount */}
-          <View className="bg-slate-900/40 rounded-[24px] p-6 border border-white/5 mb-6">
-            <Text className="text-slate-500 text-[10px] font-bold uppercase tracking-[2px] mb-2">Total Amount</Text>
-            <Text className="text-emerald-400 text-4xl font-bold">₹{Number(expense.totalAmount).toFixed(2)}</Text>
+          <View style={[styles.card, { marginBottom: 24 }]}>
+            <Text style={styles.label}>Total Amount</Text>
+            <Text style={styles.amountText}>₹{Number(expense.totalAmount).toFixed(2)}</Text>
           </View>
 
           {/* Category */}
-          <View className="mb-6">
-            <Text className="text-slate-500 text-[10px] font-bold uppercase tracking-[2px] mb-3">Category</Text>
+          <View style={styles.section}>
+            <Text style={styles.label}>Category</Text>
             {isEditing ? (
               <ScrollView horizontal showsHorizontalScrollIndicator={false}>
                 {CATEGORIES.map((cat) => (
                   <TouchableOpacity
                     key={cat}
                     onPress={() => setCategory(cat)}
-                    className={`px-5 py-2.5 rounded-2xl mr-2 border ${category === cat ? 'bg-primary border-primary' : 'bg-slate-900 border-white/5'}`}
+                    style={[
+                      styles.categoryBtn, 
+                      { 
+                        backgroundColor: category === cat ? colors.primary : colors.surface,
+                        borderColor: category === cat ? colors.primary : colors.border
+                      }
+                    ]}
                   >
-                    <Text className={`font-bold uppercase tracking-widest text-[9px] ${category === cat ? 'text-[#020617]' : 'text-slate-500'}`}>
+                    <Text style={[
+                      styles.categoryText, 
+                      { color: category === cat ? '#fff' : colors.textSecondary }
+                    ]}>
                       {cat}
                     </Text>
                   </TouchableOpacity>
                 ))}
               </ScrollView>
             ) : (
-              <View className="bg-slate-800 self-start px-4 py-2 rounded-xl">
-                <Text className="text-white font-bold text-sm uppercase tracking-widest">{expense.category}</Text>
+              <View style={{ backgroundColor: colors.surfaceActive, alignSelf: 'flex-start', paddingHorizontal: 16, paddingVertical: 8, borderRadius: 12 }}>
+                <Text style={{ color: colors.text, fontWeight: 'bold', fontSize: 14, textTransform: 'uppercase', letterSpacing: 1 }}>{expense.category}</Text>
               </View>
             )}
           </View>
 
           {/* Split Type */}
-          <View className="mb-6">
-            <Text className="text-slate-500 text-[10px] font-bold uppercase tracking-[2px] mb-2">Split Type</Text>
-            <Text className="text-white font-bold">{expense.splitType}</Text>
+          <View style={styles.section}>
+            <Text style={styles.label}>Split Type</Text>
+            <Text style={{ fontSize: 16, fontWeight: 'bold', color: colors.text }}>{expense.splitType}</Text>
           </View>
 
           {/* Group */}
           {expense.group && (
-            <View className="mb-6">
-              <Text className="text-slate-500 text-[10px] font-bold uppercase tracking-[2px] mb-2">Group</Text>
+            <View style={styles.section}>
+              <Text style={styles.label}>Group</Text>
               <TouchableOpacity 
-                className="bg-slate-900/40 rounded-[16px] p-4 flex-row items-center border border-white/5"
+                style={styles.rowCard}
                 onPress={() => router.push(`/group/${expense.group?.id}`)}
               >
-                <Ionicons name="people" size={18} color="#818cf8" />
-                <Text className="text-white font-bold ml-3">{expense.group.name}</Text>
-                <Ionicons name="chevron-forward" size={16} color="#475569" className="ml-auto" />
+                <Ionicons name="people" size={18} color={colors.primary} />
+                <Text style={{ color: colors.text, fontWeight: 'bold', marginLeft: 12 }}>{expense.group.name}</Text>
+                <Ionicons name="chevron-forward" size={16} color={colors.textTertiary} style={{ marginLeft: 'auto' }} />
               </TouchableOpacity>
             </View>
           )}
 
           {/* Paid By */}
-          <View className="mb-6">
-            <Text className="text-slate-500 text-[10px] font-bold uppercase tracking-[2px] mb-3">Paid By</Text>
-            <View className="gap-2">
-              {expense.payers.map((p) => (
-                <View key={p.userId} className="bg-slate-900/40 rounded-[16px] p-4 flex-row items-center border border-white/5">
-                  <View className="h-8 w-8 rounded-full bg-slate-800 items-center justify-center mr-3">
-                    <Text className="text-white font-bold text-xs">{p.user.name.charAt(0)}</Text>
+          <View style={styles.section}>
+            <Text style={styles.label}>Paid By</Text>
+            <View>
+              {expense.payers.map((p) => {
+                const isMe = p.userId === currentUserId;
+                const canSeeAmount = isMe || canEdit || isAdmin;
+                
+                return (
+                  <View key={p.userId} style={styles.rowCard}>
+                    <View style={styles.avatar}>
+                      <Text style={styles.avatarText}>{p.user.name.charAt(0)}</Text>
+                    </View>
+                    <Text style={{ color: colors.text, fontWeight: isMe ? 'bold' : 'normal', flex: 1 }}>
+                      {isMe ? "You" : p.user.name}
+                    </Text>
+                    <Text style={{ color: colors.success, fontWeight: 'bold' }}>
+                      {canSeeAmount ? `₹${Number(p.amountPaid).toFixed(2)}` : "₹ ••••"}
+                    </Text>
                   </View>
-                  <Text className="text-white font-bold flex-1">{p.user.name}</Text>
-                  <Text className="text-emerald-400 font-bold">₹{Number(p.amountPaid).toFixed(2)}</Text>
-                </View>
-              ))}
+                );
+              })}
             </View>
           </View>
 
           {/* Splits */}
-          <View className="mb-10">
-            <Text className="text-slate-500 text-[10px] font-bold uppercase tracking-[2px] mb-3">Split Between</Text>
-            <View className="gap-2">
-              {expense.splits.map((s) => (
-                <View key={s.userId} className="bg-slate-900/40 rounded-[16px] p-4 flex-row items-center border border-white/5">
-                  <View className="h-8 w-8 rounded-full bg-slate-800 items-center justify-center mr-3">
-                    <Text className="text-white font-bold text-xs">{s.user.name.charAt(0)}</Text>
+          <View style={{ marginBottom: 40 }}>
+            <Text style={styles.label}>Split Breakdown</Text>
+            <View>
+              {expense.splits.map((s) => {
+                const isMe = s.userId === currentUserId;
+                const canSeeAmount = isMe || canEdit || isAdmin;
+
+                return (
+                  <View key={s.userId} style={[styles.rowCard, isMe && { borderColor: colors.primary, borderWidth: 1.5 }]}>
+                    <View style={[styles.avatar, isMe && { backgroundColor: colors.primary + '20' }]}>
+                      <Text style={[styles.avatarText, isMe && { color: colors.primary }]}>{s.user.name.charAt(0)}</Text>
+                    </View>
+                    <Text style={{ color: colors.text, fontWeight: isMe ? 'bold' : 'normal', flex: 1 }}>
+                      {isMe ? "Your Share" : s.user.name}
+                    </Text>
+                    <View style={{ alignItems: 'flex-end' }}>
+                      {s.percentage && (
+                        <Text style={{ color: colors.textSecondary, fontSize: 10, marginBottom: 2 }}>{Number(s.percentage).toFixed(0)}%</Text>
+                      )}
+                      <Text style={{ color: colors.error, fontWeight: 'bold' }}>
+                        {canSeeAmount ? `₹${Number(s.amountOwed).toFixed(2)}` : "₹ ••••"}
+                      </Text>
+                    </View>
                   </View>
-                  <Text className="text-white font-bold flex-1">{s.user.name}</Text>
-                  {s.percentage && (
-                    <Text className="text-slate-400 font-bold text-sm mr-2">{Number(s.percentage).toFixed(0)}%</Text>
-                  )}
-                  <Text className="text-red-400 font-bold">₹{Number(s.amountOwed).toFixed(2)}</Text>
-                </View>
-              ))}
+                );
+              })}
             </View>
           </View>
 
           {/* Save Button */}
           {isEditing && (
-            <View className="gap-3 mb-10">
+            <View style={{ gap: 12, marginBottom: 40 }}>
               <TouchableOpacity
-                className={`h-14 rounded-[20px] items-center justify-center ${saving ? 'bg-slate-800' : 'bg-primary'}`}
+                style={styles.mainBtn}
                 onPress={handleSave}
                 disabled={saving}
               >
-                <Text className="text-[#020617] font-bold uppercase tracking-widest text-sm">
+                <Text style={{ color: '#fff', fontWeight: 'bold', textTransform: 'uppercase', letterSpacing: 1, fontSize: 14 }}>
                   {saving ? "SAVING..." : "SAVE CHANGES"}
                 </Text>
               </TouchableOpacity>
               <TouchableOpacity
-                className="h-14 rounded-[20px] items-center justify-center bg-slate-900 border border-slate-800"
+                style={styles.secondaryBtn}
                 onPress={() => {
                   setTitle(expense.title);
                   setCategory(expense.category || "Other");
                   setIsEditing(false);
                 }}
               >
-                <Text className="text-slate-400 font-bold uppercase tracking-widest text-sm">CANCEL</Text>
+                <Text style={{ color: colors.textSecondary, fontWeight: 'bold', textTransform: 'uppercase', letterSpacing: 1, fontSize: 14 }}>CANCEL</Text>
               </TouchableOpacity>
             </View>
           )}
