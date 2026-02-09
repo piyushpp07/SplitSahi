@@ -31,7 +31,7 @@ export async function fetchAndCacheRates(baseCurrency: string = "USD"): Promise<
       throw new Error(`Failed to fetch exchange rates: ${response.statusText}`);
     }
 
-    const data = await response.json();
+    const data = (await response.json()) as any;
     const rates = data.rates as Record<string, number>;
 
     // Store rates in database
@@ -95,7 +95,7 @@ export async function getExchangeRate(
     if (!isCacheValid) {
       // Refresh cache
       await fetchAndCacheRates(fromCurrency);
-      
+
       // Fetch again after refresh
       const refreshed = await prisma.exchangeRate.findUnique({
         where: {
