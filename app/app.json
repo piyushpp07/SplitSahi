@@ -30,7 +30,8 @@
         "foregroundImage": "./assets/images/adaptive-icon.png",
         "backgroundColor": "#020617"
       },
-      "package": "com.splitsahi.app",
+      "package": "com.piyushparadkar.splitsahise",
+      "versionCode": 1,
       "intentFilters": [
         {
           "action": "VIEW",
