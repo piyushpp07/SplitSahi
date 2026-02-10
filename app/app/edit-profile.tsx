@@ -8,6 +8,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { useTheme } from "@/contexts/ThemeContext";
 import * as Linking from "expo-linking";
 import AvatarPicker from "@/components/AvatarPicker";
+import EmojiPicker from "@/components/EmojiPicker";
 
 export default function EditProfileScreen() {
   const { colors } = useTheme();
@@ -16,6 +17,8 @@ export default function EditProfileScreen() {
   const [upiId, setUpiId] = useState(user?.upiId || "");
   const [phone, setPhone] = useState(user?.phone || "");
   const [avatarUrl, setAvatarUrl] = useState(user?.avatarUrl || "");
+  const [emoji, setEmoji] = useState(user?.emoji || "");
+  const [showEmojiPicker, setShowEmojiPicker] = useState(false);
   const [selectedAvatarId, setSelectedAvatarId] = useState<string | null>(
     user?.avatarUrl?.startsWith('gradient:') ? user.avatarUrl.split(':')[1] : null
   );
@@ -89,6 +92,7 @@ export default function EditProfileScreen() {
         upiId: upiId.trim() || null,
         phone: phone.trim() || null,
         avatarUrl: avatarUrl || null,
+        emoji: emoji || null,
       });
       setUser(updated);
       Alert.alert("Success", "Profile updated successfully");
@@ -133,6 +137,55 @@ export default function EditProfileScreen() {
               setAvatarUrl(url);
             }} 
           />
+
+          {/* Emoji Selection */}
+          <View style={{ marginBottom: 24 }}>
+            <Text style={{ color: colors.textSecondary, fontSize: 12, fontWeight: 'bold', marginBottom: 12 }}>
+              Profile Emoji (Optional)
+            </Text>
+            <TouchableOpacity
+              onPress={() => setShowEmojiPicker(true)}
+              style={{
+                backgroundColor: colors.surface,
+                borderRadius: 16,
+                padding: 20,
+                flexDirection: 'row',
+                alignItems: 'center',
+                borderWidth: 1,
+                borderColor: colors.border,
+              }}
+            >
+              <View style={{
+                height: 56,
+                width: 56,
+                borderRadius: 28,
+                backgroundColor: colors.surfaceActive,
+                alignItems: 'center',
+                justifyContent: 'center',
+                marginRight: 16,
+              }}>
+                <Text style={{ fontSize: 28 }}>{emoji || "😊"}</Text>
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={{ color: colors.text, fontWeight:  'bold', fontSize: 14 }}>
+                  {emoji ? "Change Emoji" : "Pick an Emoji"}
+                </Text>
+                <Text style={{ color: colors.textTertiary, fontSize: 12, marginTop: 2 }}>
+                  Shows next to your name
+                </Text>
+              </View>
+              <Ionicons name="chevron-forward" size={20} color={colors.textTertiary} />
+            </TouchableOpacity>
+            {emoji && (
+              <TouchableOpacity
+                onPress={() => setEmoji("")}
+                style={{ marginTop: 8, alignSelf: 'flex-start' }}
+              >
+                <Text style={{ color: colors.error, fontSize: 12, fontWeight: 'bold' }}>Remove Emoji</Text>
+              </TouchableOpacity>
+            )}
+          </View>
+
 
           <View style={{ marginBottom: 24 }}>
             <View style={{ marginBottom: 20 }}>
@@ -238,6 +291,12 @@ export default function EditProfileScreen() {
           </TouchableOpacity>
         </ScrollView>
       </KeyboardAvoidingView>
+
+      <EmojiPicker
+        visible={showEmojiPicker}
+        onSelect={(selected) => setEmoji(selected)}
+        onClose={() => setShowEmojiPicker(false)}
+      />
     </SafeAreaView>
   );
 }
