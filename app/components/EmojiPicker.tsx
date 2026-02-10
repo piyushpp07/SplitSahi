@@ -60,7 +60,8 @@ export default function EmojiPicker({ onSelect, onClose, visible }: EmojiPickerP
       borderTopRightRadius: 24,
       paddingTop: 20,
       paddingBottom: 40,
-      maxHeight: '70%',
+      minHeight: '75%',
+      maxHeight: '85%',
     },
     header: {
       flexDirection: 'row',
@@ -139,9 +140,10 @@ export default function EmojiPicker({ onSelect, onClose, visible }: EmojiPickerP
       marginHorizontal: 4,
       borderRadius: 12,
       backgroundColor: colors.surface,
+      minHeight: 56,
     },
     emojiText: {
-      fontSize: 28,
+      fontSize: 32,
     },
   });
 
