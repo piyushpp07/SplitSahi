@@ -14,14 +14,14 @@ interface Friend {
   avatarUrl?: string;
 }
 
-import AvatarPicker from "@/components/AvatarPicker";
+import EmojiPicker from "@/components/EmojiPicker";
 
 export default function CreateGroupScreen() {
   const { colors, isDark } = useTheme();
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
-  const [imageUrl, setImageUrl] = useState("");
-  const [selectedAvatarId, setSelectedAvatarId] = useState<string | null>(null);
+  const [emoji, setEmoji] = useState("");
+  const [showEmojiPicker, setShowEmojiPicker] = useState(false);
   const [selectedFriends, setSelectedFriends] = useState<string[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [loading, setLoading] = useState(false);
@@ -52,7 +52,7 @@ export default function CreateGroupScreen() {
       await apiPost("/groups", {
         name: name.trim(),
         description: description.trim() || undefined,
-        imageUrl: imageUrl || undefined,
+        emoji: emoji || undefined,
         memberIds: selectedFriends,
       });
       Alert.alert("Success", "Group created successfully!");
@@ -88,15 +88,30 @@ export default function CreateGroupScreen() {
         </View>
 
         <ScrollView showsVerticalScrollIndicator={false}>
-          {/* Avatar Selection */}
-          <AvatarPicker 
-            label="Pick Group Icon" 
-            selectedId={selectedAvatarId} 
-            onSelect={(id, url) => {
-                setSelectedAvatarId(id);
-                setImageUrl(url);
-            }} 
-          />
+          {/* Emoji Selection */}
+          <View style={{ marginBottom: 32, alignItems: 'center' }}>
+            <TouchableOpacity
+              onPress={() => setShowEmojiPicker(true)}
+              style={{
+                height: 80,
+                width: 80,
+                borderRadius: 40,
+                backgroundColor: colors.surface,
+                alignItems: 'center',
+                justifyContent: 'center',
+                borderWidth: 2,
+                borderColor: colors.primary,
+                marginBottom: 8,
+              }}
+            >
+              <Text style={{ fontSize: 40 }}>{emoji || "🎉"}</Text>
+            </TouchableOpacity>
+            <TouchableOpacity onPress={() => setShowEmojiPicker(true)}>
+              <Text style={{ color: colors.primary, fontWeight: 'bold', fontSize: 13 }}>
+                {emoji ? "Change Icon" : "Add Group Icon"}
+              </Text>
+            </TouchableOpacity>
+          </View>
 
           <View style={{ marginBottom: 24 }}>
             <View style={{ marginBottom: 20 }}>
@@ -257,6 +272,12 @@ export default function CreateGroupScreen() {
           </TouchableOpacity>
         </ScrollView>
       </KeyboardAvoidingView>
+
+      <EmojiPicker
+        visible={showEmojiPicker}
+        onSelect={(selected) => setEmoji(selected)}
+        onClose={() => setShowEmojiPicker(false)}
+      />
     </SafeAreaView>
   );
 }
