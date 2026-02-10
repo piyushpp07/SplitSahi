@@ -7,7 +7,6 @@ import { useAuthStore } from "@/store/authStore";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useTheme } from "@/contexts/ThemeContext";
 import * as Linking from "expo-linking";
-import AvatarPicker from "@/components/AvatarPicker";
 import EmojiPicker from "@/components/EmojiPicker";
 
 export default function EditProfileScreen() {
@@ -16,12 +15,8 @@ export default function EditProfileScreen() {
   const [name, setName] = useState(user?.name || "");
   const [upiId, setUpiId] = useState(user?.upiId || "");
   const [phone, setPhone] = useState(user?.phone || "");
-  const [avatarUrl, setAvatarUrl] = useState(user?.avatarUrl || "");
-  const [emoji, setEmoji] = useState(user?.emoji || "");
+  const [emoji, setEmoji] = useState((user as any)?.emoji || "");
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
-  const [selectedAvatarId, setSelectedAvatarId] = useState<string | null>(
-    user?.avatarUrl?.startsWith('gradient:') ? user.avatarUrl.split(':')[1] : null
-  );
   const [loading, setLoading] = useState(false);
   const [isUpiVerified, setIsUpiVerified] = useState(!!user?.upiId);
 
@@ -65,21 +60,25 @@ export default function EditProfileScreen() {
   }
 
   async function handleUpdate() {
+    // Only validate name is required
     if (!name.trim()) {
       Alert.alert("Required", "Please enter your name");
       return;
     }
     
+    // Validate UPI format only if provided
     if (upiId.trim() && !/^[a-zA-Z0-9.\-_]{2,256}@[a-zA-Z]{2,64}$/.test(upiId.trim())) {
       Alert.alert("Invalid UPI ID", "Please enter a valid UPI ID (e.g. user@bank)");
       return;
     }
 
-    if (upiId.trim() && !isUpiVerified) {
+    // Verify UPI only if provided and changed
+    if (upiId.trim() && upiId.trim() !== user?.upiId && !isUpiVerified) {
        Alert.alert("Verify VPA", "Please click the 'Verify' button to ensure your UPI ID is correct and active.");
        return;
     }
     
+    // Validate phone format only if provided
     if (phone.trim() && !/^\d{10}$/.test(phone.trim().replace(/\D/g, ''))) {
       Alert.alert("Invalid Phone", "Please enter a valid 10-digit mobile number");
       return;
@@ -91,7 +90,6 @@ export default function EditProfileScreen() {
         name: name.trim(),
         upiId: upiId.trim() || null,
         phone: phone.trim() || null,
-        avatarUrl: avatarUrl || null,
         emoji: emoji || null,
       });
       setUser(updated);
@@ -128,64 +126,38 @@ export default function EditProfileScreen() {
         </View>
 
         <ScrollView showsVerticalScrollIndicator={false}>
-          {/* Avatar Selection */}
-          <AvatarPicker 
-            label="Pick your Avatar" 
-            selectedId={selectedAvatarId} 
-            onSelect={(id, url) => {
-              setSelectedAvatarId(id);
-              setAvatarUrl(url);
-            }} 
-          />
-
           {/* Emoji Selection */}
-          <View style={{ marginBottom: 24 }}>
-            <Text style={{ color: colors.textSecondary, fontSize: 12, fontWeight: 'bold', marginBottom: 12 }}>
-              Profile Emoji (Optional)
-            </Text>
+          <View style={{ marginBottom: 32, alignItems: 'center' }}>
             <TouchableOpacity
               onPress={() => setShowEmojiPicker(true)}
               style={{
+                height: 100,
+                width: 100,
+                borderRadius: 50,
                 backgroundColor: colors.surface,
-                borderRadius: 16,
-                padding: 20,
-                flexDirection: 'row',
-                alignItems: 'center',
-                borderWidth: 1,
-                borderColor: colors.border,
-              }}
-            >
-              <View style={{
-                height: 56,
-                width: 56,
-                borderRadius: 28,
-                backgroundColor: colors.surfaceActive,
                 alignItems: 'center',
                 justifyContent: 'center',
-                marginRight: 16,
-              }}>
-                <Text style={{ fontSize: 28 }}>{emoji || "😊"}</Text>
-              </View>
-              <View style={{ flex: 1 }}>
-                <Text style={{ color: colors.text, fontWeight:  'bold', fontSize: 14 }}>
-                  {emoji ? "Change Emoji" : "Pick an Emoji"}
-                </Text>
-                <Text style={{ color: colors.textTertiary, fontSize: 12, marginTop: 2 }}>
-                  Shows next to your name
-                </Text>
-              </View>
-              <Ionicons name="chevron-forward" size={20} color={colors.textTertiary} />
+                borderWidth: 3,
+                borderColor: colors.primary,
+                marginBottom: 12,
+              }}
+            >
+              <Text style={{ fontSize: 48 }}>{emoji || "😊"}</Text>
+            </TouchableOpacity>
+            <TouchableOpacity onPress={() => setShowEmojiPicker(true)}>
+              <Text style={{ color: colors.primary, fontWeight: 'bold', fontSize: 14 }}>
+                {emoji ? "Change Emoji" : "Add Profile Emoji"}
+              </Text>
             </TouchableOpacity>
             {emoji && (
               <TouchableOpacity
                 onPress={() => setEmoji("")}
-                style={{ marginTop: 8, alignSelf: 'flex-start' }}
+                style={{ marginTop: 4 }}
               >
-                <Text style={{ color: colors.error, fontSize: 12, fontWeight: 'bold' }}>Remove Emoji</Text>
+                <Text style={{ color: colors.textTertiary, fontSize: 12 }}>Remove</Text>
               </TouchableOpacity>
             )}
           </View>
-
 
           <View style={{ marginBottom: 24 }}>
             <View style={{ marginBottom: 20 }}>
