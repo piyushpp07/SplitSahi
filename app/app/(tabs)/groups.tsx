@@ -243,7 +243,11 @@ export default function GroupsScreen() {
             style={styles.groupCard}
           >
             <View style={styles.groupIcon}>
-              <Ionicons name="people" size={22} color={colors.primary} />
+              {(item as any).emoji ? (
+                <Text style={{ fontSize: 24 }}>{(item as any).emoji}</Text>
+              ) : (
+                <Ionicons name="people" size={22} color={colors.primary} />
+              )}
             </View>
             <View style={{ flex: 1 }}>
               <Text style={styles.groupName}>{item.name}</Text>
