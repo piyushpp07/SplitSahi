@@ -215,7 +215,7 @@ export default function ProfileScreen() {
         <View style={styles.header}>
           <View style={styles.avatar}>
             <Text style={styles.avatarText}>
-              {user?.name?.charAt(0).toUpperCase() ?? "U"}
+              {(user as any)?.emoji || user?.name?.charAt(0).toUpperCase() || "U"}
             </Text>
           </View>
           <Text style={styles.name}>{user?.name ?? "User"}</Text>
