@@ -491,17 +491,20 @@ export default function DashboardScreen() {
   const netBalance = youAreOwed - youOwe;
   const transactions = data?.simplifiedTransactions ?? [];
   
-  const filteredTransactions = transactions.filter(t => {
-    if (!search) return true;
-    const searchLower = search.toLowerCase();
-    const fromName = t.fromUser?.name || "";
-    const toName = t.toUser?.name || "";
-    
-    return (
-      fromName.toLowerCase().includes(searchLower) ||
-      toName.toLowerCase().includes(searchLower)
-    );
-  });
+  const filteredTransactions = useMemo(() => 
+    transactions.filter(t => {
+      if (!search) return true;
+      const searchLower = search.toLowerCase();
+      const fromName = t.fromUser?.name || "";
+      const toName = t.toUser?.name || "";
+      
+      return (
+        fromName.toLowerCase().includes(searchLower) ||
+        toName.toLowerCase().includes(searchLower)
+      );
+    }),
+    [transactions, search]
+  );
 
   async function openUPIPay(transaction: typeof transactions[0]) {
     const toUser = transaction.toUser;
