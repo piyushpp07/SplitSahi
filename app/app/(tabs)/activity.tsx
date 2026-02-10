@@ -1,4 +1,4 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useMemo } from "react";
 import { View, Text, FlatList, ActivityIndicator, RefreshControl, TouchableOpacity, TextInput, LayoutAnimation, StyleSheet, Platform, UIManager } from "react-native";
 import { useQuery } from "@tanstack/react-query";
 import { apiGet } from "@/lib/api";
@@ -41,31 +41,34 @@ export default function ActivityScreen() {
 
   const activities = data?.activities || [];
   
-  const filteredActivities = activities.filter(item => {
-    // 1. Filter by Type
-    if (filter === "expenses" && item.type !== "expense") return false;
-    if (filter === "settlements" && item.type !== "settlement") return false;
+  const filteredActivities = useMemo(() => 
+    activities.filter(item => {
+      // 1. Filter by Type
+      if (filter === "expenses" && item.type !== "expense") return false;
+      if (filter === "settlements" && item.type !== "settlement") return false;
 
-    // 2. Filter by Search
-    if (!search) return true;
-    const q = search.toLowerCase();
-    
-    if (item.type === "expense") {
-      return (
-        item.data.title?.toLowerCase().includes(q) || 
-        item.data.creator?.name?.toLowerCase().includes(q) ||
-        item.data.group?.name?.toLowerCase().includes(q) ||
-        item.data.totalAmount?.toString().includes(q)
-      );
-    } else {
-       // Settlement
-       return (
-         item.data.fromUser?.name?.toLowerCase().includes(q) ||
-         item.data.toUser?.name?.toLowerCase().includes(q) ||
-         item.data.amount?.toString().includes(q)
-       );
-    }
-  });
+      // 2. Filter by Search
+      if (!search) return true;
+      const q = search.toLowerCase();
+      
+      if (item.type === "expense") {
+        return (
+          item.data.title?.toLowerCase().includes(q) || 
+          item.data.creator?.name?.toLowerCase().includes(q) ||
+          item.data.group?.name?.toLowerCase().includes(q) ||
+          item.data.totalAmount?.toString().includes(q)
+        );
+      } else {
+         // Settlement
+         return (
+           item.data.fromUser?.name?.toLowerCase().includes(q) ||
+           item.data.toUser?.name?.toLowerCase().includes(q) ||
+           item.data.amount?.toString().includes(q)
+         );
+      }
+    }),
+    [activities, filter, search]
+  );
 
   function handlePress(item: ActivityItem) {
     if (item.type === "expense") {
@@ -89,7 +92,7 @@ export default function ActivityScreen() {
            `, ${date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`;
   }
 
-  const styles = StyleSheet.create({
+  const styles = useMemo(() => StyleSheet.create({
     container: {
       flex: 1,
       backgroundColor: colors.background,
@@ -226,7 +229,7 @@ export default function ActivityScreen() {
       fontSize: 14,
       marginTop: 4,
     }
-  });
+  }), [colors, isDark]);
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
@@ -306,6 +309,11 @@ export default function ActivityScreen() {
             data={filteredActivities}
             keyExtractor={(item) => `${item.type}-${item.id}`}
             showsVerticalScrollIndicator={false}
+            removeClippedSubviews={true}
+            maxToRenderPerBatch={10}
+            updateCellsBatchingPeriod={50}
+            windowSize={5}
+            initialNumToRender={10}
             contentContainerStyle={{ paddingBottom: 100 }}
             refreshControl={
               <RefreshControl refreshing={isFetching} onRefresh={refetch} tintColor={colors.primary} />

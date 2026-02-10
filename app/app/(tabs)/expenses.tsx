@@ -7,7 +7,7 @@ import { useAuthStore } from "@/store/authStore";
 import { useTheme } from "@/contexts/ThemeContext";
 import * as FileSystem from "expo-file-system";
 import * as Sharing from "expo-sharing";
-import { useState } from "react";
+import { useState, useMemo } from "react";
 
 interface Expense {
   id: string;
@@ -40,9 +40,12 @@ export default function ExpensesScreen() {
     queryFn: () => apiGet<Expense[]>("/expenses"),
   });
 
-  const filteredExpenses = (expenses ?? []).filter(e => 
-    e.title.toLowerCase().includes(search.toLowerCase()) ||
-    e.category.toLowerCase().includes(search.toLowerCase())
+  const filteredExpenses = useMemo(() =>
+    (expenses ?? []).filter(e =>
+      e.title.toLowerCase().includes(search.toLowerCase()) ||
+      e.category.toLowerCase().includes(search.toLowerCase())
+    ),
+    [expenses, search]
   );
 
   async function handleExport() {
@@ -224,6 +227,11 @@ export default function ExpensesScreen() {
         contentContainerStyle={{ padding: 24, paddingBottom: 120 }}
         keyExtractor={(item) => item.id}
         showsVerticalScrollIndicator={false}
+        removeClippedSubviews={true}
+        maxToRenderPerBatch={10}
+        updateCellsBatchingPeriod={50}
+        windowSize={5}
+        initialNumToRender={10}
         ListHeaderComponent={
           <View style={styles.header}>
             <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>

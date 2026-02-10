@@ -1,4 +1,4 @@
-import { useCallback } from "react";
+import { useCallback, useMemo } from "react";
 import { View, Text, FlatList, TouchableOpacity, RefreshControl, StyleSheet } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { router, useFocusEffect } from "expo-router";
@@ -27,7 +27,7 @@ export default function GroupsScreen() {
     }, [])
   );
 
-  const styles = StyleSheet.create({
+  const styles = useMemo(() => StyleSheet.create({
     container: {
       flex: 1,
       backgroundColor: colors.background,
@@ -165,7 +165,7 @@ export default function GroupsScreen() {
       color: '#fff',
       fontWeight: 'bold',
     }
-  });
+  }), [colors]);
 
   if (isLoading) {
     return (
@@ -182,6 +182,11 @@ export default function GroupsScreen() {
         contentContainerStyle={{ padding: 20, paddingBottom: 120 }}
         keyExtractor={(item) => item.id}
         showsVerticalScrollIndicator={false}
+        removeClippedSubviews={true}
+        maxToRenderPerBatch={10}
+        updateCellsBatchingPeriod={50}
+        windowSize={5}
+        initialNumToRender={10}
         refreshControl={
           <RefreshControl refreshing={isFetching} onRefresh={refetch} tintColor={colors.primary} />
         }
