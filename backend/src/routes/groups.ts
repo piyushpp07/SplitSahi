@@ -29,6 +29,7 @@ groupsRouter.post(
   "/",
   body("name").trim().notEmpty(),
   body("description").optional().trim(),
+  body("emoji").optional().trim(),
   body("memberIds").optional().isArray(),
   body("memberIds.*").optional().isString(),
   async (req: AuthRequest, res, next) => {
@@ -36,11 +37,12 @@ groupsRouter.post(
       const err = validationResult(req);
       if (!err.isEmpty()) throw new AppError(400, err.array()[0].msg, "VALIDATION_ERROR");
       const userId = (req as AuthRequest & { userEntity: { id: string } }).userEntity.id;
-      const { name, description, memberIds } = req.body;
+      const { name, description, emoji, memberIds } = req.body;
       const group = await prisma.group.create({
         data: {
           name,
           description,
+          emoji,
           createdById: userId,
           members: {
             create: [
@@ -75,13 +77,14 @@ groupsRouter.get("/:id", async (req: AuthRequest, res, next) => {
     res.json(group);
   } catch (e) {
     next(e);
-    }
+  }
 });
 
 groupsRouter.patch(
   "/:id",
   body("name").optional().trim().notEmpty(),
   body("description").optional().trim(),
+  body("emoji").optional().trim(),
   async (req: AuthRequest, res, next) => {
     try {
       const userId = (req as AuthRequest & { userEntity: { id: string } }).userEntity.id;
@@ -89,10 +92,10 @@ groupsRouter.patch(
         where: { groupId: req.params.id, userId, role: "ADMIN" },
       });
       if (!member) throw new AppError(403, "Only admins can update group", "FORBIDDEN");
-      const { name, description } = req.body;
+      const { name, description, emoji } = req.body;
       const group = await prisma.group.update({
         where: { id: req.params.id },
-        data: { name, description },
+        data: { name, description, emoji },
         include: {
           creator: { select: { id: true, name: true, avatarUrl: true } },
           members: { include: { user: { select: { id: true, name: true, avatarUrl: true } } } },
@@ -169,7 +172,7 @@ groupsRouter.post(
     try {
       const err = validationResult(req);
       if (!err.isEmpty()) throw new AppError(400, err.array()[0].msg, "VALIDATION_ERROR");
-      
+
       const userId = (req as AuthRequest & { userEntity: { id: string } }).userEntity.id;
       const { groupId } = req.body;
 

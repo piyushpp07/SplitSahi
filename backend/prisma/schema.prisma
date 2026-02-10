@@ -25,6 +25,7 @@ model User {
   oauthProvider String?   // 'google', 'apple', etc.
   oauthId       String?   // OAuth provider's user ID
   avatarUrl     String?
+  emoji         String?   // Profile emoji for avatar
   upiId         String?   // UPI ID for Indian payments (e.g. user@paytm)
   currency      String    @default("INR")
   createdAt     DateTime  @default(now())
@@ -78,6 +79,7 @@ model Group {
   name        String
   description String?
   imageUrl    String?
+  emoji       String?   // Group icon emoji
   currency    String    @default("INR")
   createdById String
   createdAt   DateTime  @default(now())
@@ -157,6 +159,7 @@ model Expense {
   title        String
   description  String?
   category     String    // e.g. Food, Travel; used for smart categorization
+  emoji        String?   // Custom expense emoji icon
   totalAmount  Decimal   @db.Decimal(12, 2)
   currency     String    @default("INR")
   imageUrl     String?

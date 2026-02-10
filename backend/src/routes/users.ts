@@ -13,7 +13,7 @@ usersRouter.get("/me", async (req: AuthRequest, res, next) => {
     const user = (req as AuthRequest & { userEntity: { id: string } }).userEntity;
     const u = await prisma.user.findUnique({
       where: { id: user.id },
-      select: { id: true, email: true, name: true, phone: true, upiId: true, avatarUrl: true, currency: true, createdAt: true },
+      select: { id: true, email: true, name: true, phone: true, upiId: true, avatarUrl: true, emoji: true, currency: true, createdAt: true },
     });
     if (!u) throw new AppError(404, "User not found", "NOT_FOUND");
     res.json(u);
@@ -32,16 +32,17 @@ usersRouter.patch(
     .matches(/^[a-zA-Z0-9.\-_]{2,256}@[a-zA-Z]{2,64}$/)
     .withMessage("Invalid UPI ID format (e.g., name@bank)"),
   body("avatarUrl").optional().trim(),
+  body("emoji").optional().trim(),
   async (req: AuthRequest, res, next) => {
     try {
       const err = validationResult(req);
       if (!err.isEmpty()) throw new AppError(400, err.array()[0].msg, "VALIDATION_ERROR");
       const user = (req as AuthRequest & { userEntity: { id: string } }).userEntity;
-      const { name, phone, upiId, avatarUrl } = req.body;
+      const { name, phone, upiId, avatarUrl, emoji } = req.body;
       const updated = await prisma.user.update({
         where: { id: user.id },
-        data: { name, phone, upiId, avatarUrl },
-        select: { id: true, email: true, name: true, phone: true, upiId: true, avatarUrl: true, currency: true },
+        data: { name, phone, upiId, avatarUrl, emoji },
+        select: { id: true, email: true, name: true, phone: true, upiId: true, avatarUrl: true, emoji: true, currency: true },
       });
       res.json(updated);
     } catch (e) {
@@ -68,7 +69,7 @@ usersRouter.get("/search", async (req: AuthRequest, res, next) => {
         ],
       },
       take: 20,
-      select: { id: true, name: true, email: true, phone: true, avatarUrl: true },
+      select: { id: true, name: true, email: true, phone: true, avatarUrl: true, emoji: true },
     });
     res.json(users);
   } catch (e) {
