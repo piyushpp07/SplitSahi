@@ -6,6 +6,8 @@ import { apiPost } from "@/lib/api";
 import { Ionicons } from "@expo/vector-icons";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useTheme } from "@/contexts/ThemeContext";
+import { Input } from "@/components/ui/Input";
+import { Button } from "@/components/ui/Button";
 import Animated, { FadeInDown, FadeInUp } from "react-native-reanimated";
 
 export default function LoginScreen() {
@@ -63,50 +65,22 @@ export default function LoginScreen() {
             style={{ gap: 16, marginBottom: 32 }}
           >
             {/* Identifier Input */}
-            <View style={{ 
-              backgroundColor: colors.surface, 
-              borderRadius: 20, 
-              borderWidth: 1, 
-              borderColor: colors.border, 
-              padding: 4, 
-              flexDirection: 'row', 
-              alignItems: 'center' 
-            }}>
-              <View style={{ height: 40, width: 40, alignItems: 'center', justifyContent: 'center', marginLeft: 8 }}>
-                <Ionicons name="person-outline" size={18} color={colors.textTertiary} />
-              </View>
-              <TextInput
-                style={{ flex: 1, padding: 12, color: colors.text, fontSize: 16 }}
-                placeholder="Email or Username"
-                placeholderTextColor={colors.textMuted}
-                value={identifier}
-                onChangeText={setIdentifier}
-                autoCapitalize="none"
-              />
-            </View>
+            <Input
+              icon="person-outline"
+              placeholder="Email or Username"
+              value={identifier}
+              onChangeText={setIdentifier}
+              autoCapitalize="none"
+            />
 
             {/* Password Input */}
-            <View style={{ 
-              backgroundColor: colors.surface, 
-              borderRadius: 20, 
-              borderWidth: 1, 
-              borderColor: colors.border, 
-              padding: 4, 
-              flexDirection: 'row', 
-              alignItems: 'center' 
-            }}>
-              <View style={{ height: 40, width: 40, alignItems: 'center', justifyContent: 'center', marginLeft: 8 }}>
-                <Ionicons name="lock-closed-outline" size={18} color={colors.textTertiary} />
-              </View>
-              <TextInput
-                style={{ flex: 1, padding: 12, color: colors.text, fontSize: 16 }}
-                placeholder="Password"
-                placeholderTextColor={colors.textMuted}
-                value={password}
-                onChangeText={setPassword}
-                secureTextEntry
-              />
-            </View>
+            <Input
+              icon="lock-closed-outline"
+              placeholder="Password"
+              value={password}
+              onChangeText={setPassword}
+              secureTextEntry
+            />
 
             <View style={{ alignItems: 'flex-end' }}>
               <Link href="/(auth)/forgot-password" asChild>
@@ -118,33 +92,12 @@ export default function LoginScreen() {
           </Animated.View>
 
           <Animated.View entering={FadeInDown.delay(600).duration(800)}>
-            <TouchableOpacity
-              style={{
-                height: 56,
-                borderRadius: 20,
-                alignItems: 'center',
-                justifyContent: 'center',
-                marginBottom: 32,
-                backgroundColor: loading ? colors.surfaceActive : colors.primary,
-                shadowColor: colors.primary,
-                shadowOffset: { width: 0, height: 4 },
-                shadowOpacity: 0.2,
-                shadowRadius: 8,
-                elevation: 4,
-              }}
+            <Button
+              title={loading ? "Signing In..." : "Sign In"}
               onPress={handleLogin}
-              disabled={loading}
-            >
-              <Text style={{ 
-                color: '#ffffff', 
-                fontWeight: 'bold', 
-                fontSize: 12, 
-                textTransform: 'uppercase', 
-                letterSpacing: 1.5 
-              }}>
-                {loading ? "Signing In..." : "Sign In"}
-              </Text>
-            </TouchableOpacity>
+              loading={loading}
+              style={{ marginBottom: 32 }}
+            />
           </Animated.View>
 
           <View style={{ flexDirection: 'row', justifyContent: 'center', alignItems: 'center', paddingBottom: 32 }}>

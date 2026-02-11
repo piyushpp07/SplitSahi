@@ -7,6 +7,8 @@ import { apiPost, apiGet } from "@/lib/api";
 import { Ionicons } from "@expo/vector-icons";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useTheme } from "@/contexts/ThemeContext";
+import { Input } from "@/components/ui/Input";
+import { Button } from "@/components/ui/Button";
 import EmojiPicker from "@/components/EmojiPicker";
 
 export default function RegisterScreen() {
@@ -152,143 +154,65 @@ export default function RegisterScreen() {
             </View>
 
             {/* Name */}
-            <View style={{ 
-              backgroundColor: colors.surface, 
-              borderRadius: 20, 
-              borderWidth: 1, 
-              borderColor: colors.border, 
-              padding: 4, 
-              flexDirection: 'row', 
-              alignItems: 'center' 
-            }}>
-              <View style={{ height: 40, width: 40, alignItems: 'center', justifyContent: 'center', marginLeft: 8 }}>
-                <Ionicons name="person-outline" size={18} color={colors.textTertiary} />
-              </View>
-              <TextInput
-                style={{ flex: 1, padding: 12, color: colors.text, fontSize: 16 }}
-                placeholder="Full Name"
-                placeholderTextColor={colors.textMuted}
-                value={name}
-                onChangeText={setName}
-              />
-            </View>
+            <Input
+              icon="person-outline"
+              placeholder="Full Name"
+              value={name}
+              onChangeText={setName}
+            />
 
             {/* Username */}
-            <View style={{ 
-              backgroundColor: colors.surface, 
-              borderRadius: 20, 
-              borderWidth: 1, 
-              borderColor: isUsernameValid === false ? colors.error : colors.border, 
-              padding: 4, 
-              flexDirection: 'row', 
-              alignItems: 'center' 
-            }}>
-              <View style={{ height: 40, width: 40, alignItems: 'center', justifyContent: 'center', marginLeft: 8 }}>
-                <Ionicons name="at-outline" size={18} color={isUsernameValid === false ? colors.error : colors.primary} />
-              </View>
-              <TextInput
-                style={{ flex: 1, padding: 12, color: colors.text, fontSize: 16 }}
-                placeholder="Unique Username"
-                placeholderTextColor={colors.textMuted}
-                value={username}
-                onChangeText={(val) => {
-                  const sanitized = val.toLowerCase().replace(/[^a-z0-9_]/g, '');
-                  setUsername(sanitized);
-                  handleCheckUsername(sanitized);
-                }}
-                autoCapitalize="none"
-              />
-              {usernameLoading ? (
-                <View style={{ marginRight: 12 }}>
+            <Input
+              icon="at-outline"
+              placeholder="Unique Username"
+              value={username}
+              onChangeText={(val) => {
+                const sanitized = val.toLowerCase().replace(/[^a-z0-9_]/g, '');
+                setUsername(sanitized);
+                handleCheckUsername(sanitized);
+              }}
+              autoCapitalize="none"
+              error={isUsernameValid === false}
+              rightElement={
+                usernameLoading ? (
                    <Text style={{ fontSize: 10, color: colors.textMuted }}>checking...</Text>
-                </View>
-              ) : isUsernameValid !== null && username.length >= 3 ? (
-                <View style={{ marginRight: 12 }}>
+                ) : isUsernameValid !== null && username.length >= 3 ? (
                    <Ionicons 
                      name={isUsernameValid ? "checkmark-circle" : "close-circle"} 
                      size={20} 
                      color={isUsernameValid ? colors.success : colors.error} 
                    />
-                </View>
-              ) : null}
-            </View>
+                ) : undefined
+              }
+            />
             
             {/* Email Address */}
-            <View style={{ 
-              backgroundColor: colors.surface, 
-              borderRadius: 20, 
-              borderWidth: 1, 
-              borderColor: colors.border, 
-              padding: 4, 
-              flexDirection: 'row', 
-              alignItems: 'center' 
-            }}>
-              <View style={{ height: 40, width: 40, alignItems: 'center', justifyContent: 'center', marginLeft: 8 }}>
-                <Ionicons name="mail-outline" size={18} color={colors.textTertiary} />
-              </View>
-              <TextInput
-                style={{ flex: 1, padding: 12, color: colors.text, fontSize: 16 }}
-                placeholder="Email Address"
-                placeholderTextColor={colors.textMuted}
-                value={email}
-                onChangeText={setEmail}
-                keyboardType="email-address"
-                autoCapitalize="none"
-              />
-            </View>
+            <Input
+              icon="mail-outline"
+              placeholder="Email Address"
+              value={email}
+              onChangeText={setEmail}
+              keyboardType="email-address"
+              autoCapitalize="none"
+            />
 
             {/* Password */}
-            <View style={{ 
-              backgroundColor: colors.surface, 
-              borderRadius: 20, 
-              borderWidth: 1, 
-              borderColor: colors.border, 
-              padding: 4, 
-              flexDirection: 'row', 
-              alignItems: 'center' 
-            }}>
-              <View style={{ height: 40, width: 40, alignItems: 'center', justifyContent: 'center', marginLeft: 8 }}>
-                <Ionicons name="lock-closed-outline" size={18} color={colors.textTertiary} />
-              </View>
-              <TextInput
-                style={{ flex: 1, padding: 12, color: colors.text, fontSize: 16 }}
-                placeholder="Password (6+ characters)"
-                placeholderTextColor={colors.textMuted}
-                value={password}
-                onChangeText={setPassword}
-                secureTextEntry
-              />
-            </View>
+            <Input
+              icon="lock-closed-outline"
+              placeholder="Password (6+ characters)"
+              value={password}
+              onChangeText={setPassword}
+              secureTextEntry
+            />
           </Animated.View>
 
           <Animated.View entering={FadeInDown.delay(600).duration(800)}>
-            <TouchableOpacity
-              style={{
-                height: 56,
-                borderRadius: 20,
-                alignItems: 'center',
-                justifyContent: 'center',
-                marginBottom: 32,
-                backgroundColor: loading ? colors.surfaceActive : colors.primary,
-                shadowColor: colors.primary,
-                shadowOffset: { width: 0, height: 4 },
-                shadowOpacity: 0.2,
-                shadowRadius: 8,
-                elevation: 4,
-              }}
+            <Button
+              title={loading ? "Creating Account..." : "Register"}
               onPress={handleRegister}
-              disabled={loading}
-            >
-              <Text style={{ 
-                color: '#ffffff', 
-                fontWeight: 'bold', 
-                fontSize: 12, 
-                textTransform: 'uppercase', 
-                letterSpacing: 1 
-              }}>
-                {loading ? "Creating Account..." : "Register"}
-              </Text>
-            </TouchableOpacity>
+              loading={loading}
+              style={{ marginBottom: 32 }}
+            />
           </Animated.View>
 
           <View style={{ flexDirection: 'row', justifyContent: 'center', alignItems: 'center', paddingBottom: 32 }}>
