@@ -219,6 +219,7 @@ export default function ProfileScreen() {
             </Text>
           </View>
           <Text style={styles.name}>{user?.name ?? "User"}</Text>
+          <Text style={[styles.email, { marginBottom: 4 }]}>@{user?.username ?? "username"}</Text>
           <Text style={styles.email}>{user?.email ?? "user@example.com"}</Text>
           
           <TouchableOpacity 
@@ -236,11 +237,21 @@ export default function ProfileScreen() {
           
           <View style={styles.infoRow}>
             <View style={styles.infoIcon}>
+              <Ionicons name="at-outline" size={18} color={colors.textSecondary} />
+            </View>
+            <View>
+              <Text style={styles.infoLabel}>Username</Text>
+              <Text style={styles.infoValue}>@{user?.username || "Not set"}</Text>
+            </View>
+          </View>
+
+          <View style={styles.infoRow}>
+            <View style={styles.infoIcon}>
               <Ionicons name="call-outline" size={18} color={colors.textSecondary} />
             </View>
             <View>
               <Text style={styles.infoLabel}>Phone Number</Text>
-              <Text style={styles.infoValue}>{user?.phone || "Not scheduled"}</Text>
+              <Text style={styles.infoValue}>{user?.phone || "Not set"}</Text>
             </View>
           </View>
           

@@ -10,6 +10,7 @@ import { useTheme } from "@/contexts/ThemeContext";
 interface Friend {
   id: string;
   name: string;
+  username?: string;
   email: string;
   avatarUrl?: string;
 }
@@ -47,6 +48,7 @@ export default function FriendsScreen() {
   // Filter friends based on search
   const filteredFriends = (friends ?? []).filter(f => 
     f.name.toLowerCase().includes(search.toLowerCase()) ||
+    (f.username && f.username.toLowerCase().includes(search.toLowerCase())) ||
     f.email.toLowerCase().includes(search.toLowerCase())
   );
 
@@ -279,7 +281,7 @@ export default function FriendsScreen() {
               </View>
               <View style={styles.friendInfo}>
                 <Text style={styles.friendName}>{item.name}</Text>
-                <Text style={styles.friendEmail}>{item.email}</Text>
+                <Text style={styles.friendEmail}>{item.username ? `@${item.username}` : item.email}</Text>
               </View>
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
                 <TouchableOpacity 

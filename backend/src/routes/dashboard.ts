@@ -24,7 +24,7 @@ dashboardRouter.get("/", async (req: AuthRequest, res, next) => {
 
     const users = await prisma.user.findMany({
       where: { id: { in: Array.from(userIds) } },
-      select: { id: true, name: true, avatarUrl: true, upiId: true },
+      select: { id: true, name: true, username: true, emoji: true, avatarUrl: true, upiId: true },
     });
 
     const userMap = new Map(users.map((u) => [u.id, u]));

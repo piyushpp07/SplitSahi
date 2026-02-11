@@ -9,31 +9,36 @@ const JWT_SECRET = process.env.JWT_SECRET ?? "dev-secret-change-me";
 const SALT_ROUNDS = 10;
 
 export async function resetPassword(email: string, otp: string, newPassword: string) {
-  const result = await verifyOTP(email, otp, "email");
+  const lowerEmail = email.toLowerCase().trim();
+  const result = await verifyOTP(lowerEmail, otp, "email");
   if (!result.success) throw new AppError(400, result.message, "OTP_VERIFICATION_FAILED");
 
   const passwordHash = await bcrypt.hash(newPassword, SALT_ROUNDS);
   await prisma.user.update({
-    where: { email },
+    where: { email: lowerEmail },
     data: { passwordHash },
   });
   return { success: true };
 }
 
 export async function checkUsername(username: string) {
-  const existing = await prisma.user.findUnique({ where: { username } });
+  const normalized = username.toLowerCase().trim();
+  const existing = await prisma.user.findUnique({ where: { username: normalized } });
   return { available: !existing };
 }
 
 export async function register(email: string, password: string, name: string, username: string, emoji?: string, skipOTP: boolean = false) {
+  const lowerEmail = email.toLowerCase().trim();
+  const lowerUsername = username.toLowerCase().trim();
+
   // 1. Check if email exists
-  if (email) {
-    const existing = await prisma.user.findUnique({ where: { email } });
+  if (lowerEmail) {
+    const existing = await prisma.user.findUnique({ where: { email: lowerEmail } });
     if (existing) throw new AppError(400, "Email already registered", "EMAIL_EXISTS");
   }
 
   // 2. Check username
-  const existingUser = await prisma.user.findUnique({ where: { username } });
+  const existingUser = await prisma.user.findUnique({ where: { username: lowerUsername } });
   if (existingUser) throw new AppError(400, "Username already taken", "USERNAME_TAKEN");
 
   const passwordHash = await bcrypt.hash(password, SALT_ROUNDS);
@@ -41,13 +46,13 @@ export async function register(email: string, password: string, name: string, us
   // 3. Create user
   const user = await prisma.user.create({
     data: {
-      email,
+      email: lowerEmail,
       name,
-      username,
+      username: lowerUsername,
       emoji: emoji || null,
       passwordHash,
       emailVerified: skipOTP,
-      phone: null, // Phone is no longer mandatory/used in registration
+      phone: null,
       phoneVerified: false
     },
     select: { id: true, email: true, name: true, username: true, emoji: true, upiId: true, avatarUrl: true, createdAt: true },
@@ -64,22 +69,23 @@ export async function register(email: string, password: string, name: string, us
 
   // 4. Send OTP to email
   const { sendOTP } = await import("./otp.js");
-  await sendOTP(email, "email");
+  await sendOTP(lowerEmail, "email");
 
   return { user, needsVerification: true };
 }
 
 export async function verifyOTPIdentifier(identifier: string, otp: string, type: "phone" | "email" = "email") {
+  const normalized = identifier.toLowerCase().trim();
   // We only support email verification for now based on requirements
   if (type !== 'email') {
     throw new AppError(400, "Only email verification is supported", "INVALID_TYPE");
   }
 
-  const result = await verifyOTP(identifier, otp, type);
+  const result = await verifyOTP(normalized, otp, type);
   if (!result.success) throw new AppError(400, result.message, "OTP_VERIFICATION_FAILED");
 
   const user = await prisma.user.findUnique({
-    where: { email: identifier }
+    where: { email: normalized }
   }) as any;
 
   if (!user) {
@@ -118,12 +124,13 @@ export async function verifyOTPIdentifier(identifier: string, otp: string, type:
 }
 
 export async function login(identifier: string, password: string) {
+  const lowerIdentifier = identifier.toLowerCase().trim();
   // Login with Email or Username
   const user = await prisma.user.findFirst({
     where: {
       OR: [
-        { email: identifier },
-        { username: identifier }
+        { email: lowerIdentifier },
+        { username: lowerIdentifier }
       ]
     }
   }) as any;

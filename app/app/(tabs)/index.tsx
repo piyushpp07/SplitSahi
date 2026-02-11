@@ -759,15 +759,22 @@ const TransactionItem = memo(({ transaction, userId, settling, colors, styles, o
     >
       <View style={styles.transactionHeader}>
         <View style={styles.avatar}>
-          <Text style={styles.avatarText}>{transaction.fromUser?.name?.charAt(0)}</Text>
+          <Text style={styles.avatarText}>
+            {transaction.fromUserId === userId 
+              ? (transaction.toUser?.emoji || transaction.toUser?.name?.charAt(0))
+              : (transaction.fromUser?.emoji || transaction.fromUser?.name?.charAt(0))}
+          </Text>
         </View>
         <View style={{ flex: 1 }}>
           <Text style={styles.transactionName}>
-            {transaction.fromUserId === userId ? "You" : transaction.fromUser?.name}
+             {transaction.fromUserId === userId 
+               ? `You owe ${transaction.toUser?.name}` 
+               : `${transaction.fromUser?.name} owes you`}
           </Text>
           <Text style={styles.transactionSubtext}>
-            {(transaction.fromUserId === userId ? "owe " : "owes ")}
-            {transaction.toUserId === userId ? "You" : transaction.toUser?.name}
+            {transaction.fromUserId === userId 
+              ? (transaction.toUser?.username ? `@${transaction.toUser.username}` : transaction.toUser?.email)
+              : (transaction.fromUser?.username ? `@${transaction.fromUser.username}` : transaction.fromUser?.email)}
           </Text>
         </View>
         <Text style={styles.transactionAmount}>₹{transaction.amount.toFixed(0)}</Text>

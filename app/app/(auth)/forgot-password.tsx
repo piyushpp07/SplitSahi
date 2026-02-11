@@ -1,10 +1,13 @@
 import { useState } from "react";
-import { View, Text, TextInput, TouchableOpacity, Alert, KeyboardAvoidingView, Platform, ScrollView } from "react-native";
-import { Link, router } from "expo-router";
+import { View, Alert, KeyboardAvoidingView, Platform, ScrollView, TouchableOpacity } from "react-native";
+import { router } from "expo-router";
 import { apiPost } from "@/lib/api";
 import { Ionicons } from "@expo/vector-icons";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useTheme } from "@/contexts/ThemeContext";
+import { Input } from "@/components/ui/Input";
+import { Button } from "@/components/ui/Button";
+import { Typography } from "@/components/ui/Typography";
 
 export default function ForgotPasswordScreen() {
   const { colors } = useTheme();
@@ -48,7 +51,7 @@ export default function ForgotPasswordScreen() {
     setLoading(true);
     try {
       await apiPost("/auth/reset-password", { email: email.trim(), otp, newPassword });
-      Alert.alert("Success", "Password request successfully!", [
+      Alert.alert("Success", "Password reset successfully!", [
         { text: "Log In", onPress: () => router.replace("/(auth)/login") }
       ]);
     } catch (e) {
@@ -70,130 +73,68 @@ export default function ForgotPasswordScreen() {
           keyboardShouldPersistTaps="handled"
         >
           {/* Header */}
-          <View style={{ marginBottom: 32, alignItems: 'center' }}>
-             <TouchableOpacity 
-                onPress={() => step === "email" ? router.back() : setStep("email")}
-                style={{ position: 'absolute', left: 0, top: 0, padding: 8 }}
-             >
-                <Ionicons name="arrow-back" size={24} color={colors.text} />
-             </TouchableOpacity>
-            <Text style={{ fontSize: 24, fontWeight: 'bold', color: colors.text, marginBottom: 4, letterSpacing: -0.5 }}>
+          <View style={{ marginBottom: 40, alignItems: 'center' }}>
+            <TouchableOpacity 
+              onPress={() => step === "email" ? router.back() : setStep("email")}
+              style={{ position: 'absolute', left: 0, top: 4, padding: 8 }}
+            >
+              <Ionicons name="arrow-back" size={24} color={colors.text} />
+            </TouchableOpacity>
+            
+            <Typography variant="h2" align="center" style={{ marginBottom: 4 }}>
               {step === "email" ? "Forgot Password" : "Reset Password"}
-            </Text>
-            <Text style={{ color: colors.textSecondary, fontWeight: 'bold', textTransform: 'uppercase', letterSpacing: 2, fontSize: 10 }}>
+            </Typography>
+            <Typography variant="label" color="muted" align="center">
               {step === "email" ? "Enter your email to receive OTP" : "Enter OTP and new password"}
-            </Text>
+            </Typography>
           </View>
 
           {step === "email" ? (
             <View style={{ gap: 16, marginBottom: 32 }}>
-               <View style={{ 
-                backgroundColor: colors.surface, 
-                borderRadius: 20, 
-                borderWidth: 1, 
-                borderColor: colors.border, 
-                padding: 4, 
-                flexDirection: 'row', 
-                alignItems: 'center' 
-              }}>
-                <View style={{ height: 40, width: 40, alignItems: 'center', justifyContent: 'center', marginLeft: 8 }}>
-                  <Ionicons name="mail-outline" size={18} color={colors.textTertiary} />
-                </View>
-                <TextInput
-                  style={{ flex: 1, padding: 12, color: colors.text, fontSize: 16 }}
-                  placeholder="Email Address"
-                  placeholderTextColor={colors.textMuted}
-                  value={email}
-                  onChangeText={setEmail}
-                  autoCapitalize="none"
-                  keyboardType="email-address"
-                />
-              </View>
+              <Input
+                icon="mail-outline"
+                placeholder="Email Address"
+                value={email}
+                onChangeText={setEmail}
+                autoCapitalize="none"
+                keyboardType="email-address"
+              />
             </View>
           ) : (
             <View style={{ gap: 16, marginBottom: 32 }}>
               {/* Email (Readonly) */}
-              <View style={{ padding: 12, alignItems: 'center', marginBottom: 8 }}>
-                 <Text style={{ color: colors.textSecondary }}>Checking: {email}</Text>
+              <View style={{ padding: 12, alignItems: 'center', marginBottom: 8, backgroundColor: colors.surface, borderRadius: 16 }}>
+                <Typography color="muted">Checking: <Typography weight="bold" color="text">{email}</Typography></Typography>
               </View>
               
-              <View style={{ 
-                backgroundColor: colors.surface, 
-                borderRadius: 20, 
-                borderWidth: 1, 
-                borderColor: colors.border, 
-                padding: 4, 
-                flexDirection: 'row', 
-                alignItems: 'center' 
-              }}>
-                <View style={{ height: 40, width: 40, alignItems: 'center', justifyContent: 'center', marginLeft: 8 }}>
-                  <Ionicons name="keypad-outline" size={18} color={colors.textTertiary} />
-                </View>
-                <TextInput
-                  style={{ flex: 1, padding: 12, color: colors.text, fontSize: 16 }}
-                  placeholder="6-Digit OTP"
-                  placeholderTextColor={colors.textMuted}
-                  value={otp}
-                  onChangeText={setOtp}
-                  keyboardType="number-pad"
-                  maxLength={6}
-                />
-              </View>
+              <Input
+                icon="keypad-outline"
+                placeholder="6-Digit OTP"
+                value={otp}
+                onChangeText={setOtp}
+                keyboardType="number-pad"
+                maxLength={6}
+              />
 
-               <View style={{ 
-                backgroundColor: colors.surface, 
-                borderRadius: 20, 
-                borderWidth: 1, 
-                borderColor: colors.border, 
-                padding: 4, 
-                flexDirection: 'row', 
-                alignItems: 'center' 
-              }}>
-                <View style={{ height: 40, width: 40, alignItems: 'center', justifyContent: 'center', marginLeft: 8 }}>
-                  <Ionicons name="lock-closed-outline" size={18} color={colors.textTertiary} />
-                </View>
-                <TextInput
-                  style={{ flex: 1, padding: 12, color: colors.text, fontSize: 16 }}
-                  placeholder="New Password (6+ chars)"
-                  placeholderTextColor={colors.textMuted}
-                  value={newPassword}
-                  onChangeText={setNewPassword}
-                  secureTextEntry
-                />
-              </View>
+              <Input
+                icon="lock-closed-outline"
+                placeholder="New Password (6+ chars)"
+                value={newPassword}
+                onChangeText={setNewPassword}
+                secureTextEntry
+              />
             </View>
           )}
 
-          <TouchableOpacity
-            style={{
-              height: 56,
-              borderRadius: 20,
-              alignItems: 'center',
-              justifyContent: 'center',
-              marginBottom: 32,
-              backgroundColor: loading ? colors.surfaceActive : colors.primary,
-              shadowColor: colors.primary,
-              shadowOffset: { width: 0, height: 4 },
-              shadowOpacity: 0.2,
-              shadowRadius: 8,
-              elevation: 4,
-            }}
+          <Button
+            title={loading ? "Processing..." : (step === "email" ? "Send OTP" : "Reset Password")}
             onPress={step === "email" ? handleSendOTP : handleResetPassword}
-            disabled={loading}
-          >
-            <Text style={{ 
-              color: '#ffffff', 
-              fontWeight: 'bold', 
-              fontSize: 12, 
-              textTransform: 'uppercase', 
-              letterSpacing: 1.5 
-            }}>
-              {loading ? "Processing..." : (step === "email" ? "Send OTP" : "Reset Password")}
-            </Text>
-          </TouchableOpacity>
+            loading={loading}
+          />
 
         </ScrollView>
       </KeyboardAvoidingView>
     </SafeAreaView>
   );
 }
+

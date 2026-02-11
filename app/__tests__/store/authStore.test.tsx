@@ -14,7 +14,6 @@ describe('AuthStore', () => {
     const mockStore = {
       user: null,
       token: null,
-      isAuthenticated: false,
       login: jest.fn(),
       logout: jest.fn(),
       setUser: jest.fn(),
@@ -37,7 +36,6 @@ describe('AuthStore', () => {
     const mockStore = {
       user: mockUser,
       token: 'mock-token',
-      isAuthenticated: true,
       login: jest.fn(),
       logout: jest.fn(),
       setUser: jest.fn(),
@@ -54,7 +52,6 @@ describe('AuthStore', () => {
     const mockStore = {
       user: null,
       token: null,
-      isAuthenticated: false,
       login: jest.fn(),
       logout: jest.fn(),
       setUser: jest.fn(),

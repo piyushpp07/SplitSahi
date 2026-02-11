@@ -10,6 +10,7 @@ import * as Contacts from "expo-contacts";
 interface User {
   id: string;
   name: string;
+  username?: string;
   email?: string;
   phone?: string;
   avatarUrl?: string;
@@ -154,7 +155,7 @@ export default function AddFriendScreen() {
             <Ionicons name="search" size={20} color={colors.textTertiary} style={{ marginRight: 8 }} />
             <TextInput
               style={{ flex: 1, padding: 12, color: colors.text }}
-              placeholder="Search by name, email or phone"
+              placeholder="Search by name, email or username"
               placeholderTextColor={colors.textMuted}
               value={query}
               onChangeText={searchUsers}
@@ -191,7 +192,9 @@ export default function AddFriendScreen() {
               </View>
               <View style={{ flex: 1 }}>
                 <Text style={{ color: colors.text, fontWeight: 'bold', fontSize: 14 }}>{item.name}</Text>
-                <Text style={{ color: colors.textSecondary, fontSize: 12 }}>{item.email || item.phone || "User"}</Text>
+                <Text style={{ color: colors.textSecondary, fontSize: 12 }}>
+                  {item.username ? `@${item.username}` : (item.email || item.phone || "User")}
+                </Text>
               </View>
               <TouchableOpacity
                 style={{ 
