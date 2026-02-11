@@ -1,0 +1,180 @@
+import { useState, useRef, useEffect } from "react";
+import { View, Text, TextInput, TouchableOpacity, Alert, KeyboardAvoidingView, Platform } from "react-native";
+import { router, useLocalSearchParams } from "expo-router";
+import { apiPost } from "@/lib/api";
+import { Ionicons } from "@expo/vector-icons";
+import { SafeAreaView } from "react-native-safe-area-context";
+import { useTheme } from "@/contexts/ThemeContext";
+import Animated, { FadeInDown, FadeInUp } from "react-native-reanimated";
+import { useAuthStore } from "@/store/authStore";
+
+export default function OTPVerificationScreen() {
+  const { colors } = useTheme();
+  const { phone, email } = useLocalSearchParams<{ phone: string; email?: string }>();
+  const [otp, setOtp] = useState(["", "", "", "", "", ""]);
+  const [loading, setLoading] = useState(false);
+  const [timer, setTimer] = useState(30);
+  const setAuth = useAuthStore((s) => s.setAuth);
+  
+  const inputs = useRef<Array<TextInput | null>>([]);
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setTimer((prev) => (prev > 0 ? prev - 1 : 0));
+    }, 1000);
+    return () => clearInterval(interval);
+  }, []);
+
+  const handleChange = (text: string, index: number) => {
+    const newOtp = [...otp];
+    newOtp[index] = text;
+    setOtp(newOtp);
+
+    if (text.length !== 0 && index < 5) {
+      inputs.current[index + 1]?.focus();
+    }
+  };
+
+  const handleKeyPress = (e: any, index: number) => {
+    if (e.nativeEvent.key === 'Backspace' && otp[index] === '' && index > 0) {
+      inputs.current[index - 1]?.focus();
+    }
+  };
+
+  async function handleVerify() {
+    const code = otp.join("");
+    if (code.length < 6) {
+      Alert.alert("Error", "Please enter valid 6-digit OTP");
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const res = await apiPost<{ user?: any; token?: string; needsRegistration?: boolean; verifiedIdentifier?: string }>("/auth/verify-otp", {
+        identifier: phone || email,
+        otp: code,
+        type: phone ? "phone" : "email"
+      }, { skipAuth: true });
+
+      if (res.token && res.user) {
+        await setAuth(res.token, res.user);
+        router.replace("/(tabs)");
+      } else if (res.needsRegistration) {
+        // Redirect to registration with pre-verified phone
+        router.push({
+          pathname: "/(auth)/register",
+          params: { 
+            phone: res.verifiedIdentifier || phone?.trim(),
+            verified: "true"
+          }
+        });
+      }
+    } catch (e: any) {
+      Alert.alert("Verification failed", e instanceof Error ? e.message : "Invalid OTP");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function handleResend() {
+    if (timer > 0) return;
+    
+    try {
+      await apiPost("/auth/send-otp", {
+        identifier: phone || email,
+        type: phone ? "phone" : "email"
+      }, { skipAuth: true });
+      setTimer(30);
+      Alert.alert("Success", "OTP resent successfully");
+    } catch (e) {
+      Alert.alert("Error", "Failed to resend OTP");
+    }
+  }
+
+  return (
+    <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }}>
+      <KeyboardAvoidingView 
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        style={{ flex: 1 }}
+      >
+        <View style={{ padding: 24, flex: 1, justifyContent: 'center' }}>
+          <Animated.View entering={FadeInUp.delay(200).duration(800)} style={{ alignItems: 'center', marginBottom: 40 }}>
+            <View style={{ 
+              height: 80, width: 80, borderRadius: 40, 
+              backgroundColor: colors.surface, 
+              alignItems: 'center', justifyContent: 'center', 
+              marginBottom: 24, borderWidth: 1, borderColor: colors.border
+            }}>
+              <Ionicons name="shield-checkmark" size={40} color={colors.primary} />
+            </View>
+            <Text style={{ fontSize: 28, fontWeight: 'bold', color: colors.text, marginBottom: 8 }}>Verify Identity</Text>
+            <Text style={{ color: colors.textSecondary, textAlign: 'center', fontSize: 16 }}>
+              We've sent a 6-digit code to{"\n"}
+              <Text style={{ color: colors.text, fontWeight: 'bold' }}>{phone || email}</Text>
+            </Text>
+          </Animated.View>
+
+          <Animated.View entering={FadeInDown.delay(400).duration(800)} style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 40 }}>
+            {otp.map((digit, idx) => (
+              <TextInput
+                key={idx}
+                ref={(ref) => { inputs.current[idx] = ref; }}
+                style={{
+                  width: 50,
+                  height: 60,
+                  backgroundColor: colors.surface,
+                  borderRadius: 12,
+                  borderWidth: 2,
+                  borderColor: digit ? colors.primary : colors.border,
+                  textAlign: 'center',
+                  fontSize: 24,
+                  fontWeight: 'bold',
+                  color: colors.text,
+                }}
+                maxLength={1}
+                keyboardType="number-pad"
+                value={digit}
+                onChangeText={(text) => handleChange(text, idx)}
+                onKeyPress={(e) => handleKeyPress(e, idx)}
+              />
+            ))}
+          </Animated.View>
+
+          <Animated.View entering={FadeInDown.delay(600).duration(800)}>
+            <TouchableOpacity
+              style={{
+                height: 56,
+                borderRadius: 20,
+                backgroundColor: loading ? colors.surfaceActive : colors.primary,
+                alignItems: 'center',
+                justifyContent: 'center',
+                marginBottom: 24,
+                shadowColor: colors.primary,
+                shadowOffset: { width: 0, height: 4 },
+                shadowOpacity: 0.2,
+                shadowRadius: 8,
+                elevation: 4,
+              }}
+              onPress={handleVerify}
+              disabled={loading}
+            >
+              <Text style={{ color: '#fff', fontWeight: 'bold', fontSize: 16 }}>
+                {loading ? "Verifying..." : "Verify & Proceed"}
+              </Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity 
+              onPress={handleResend}
+              disabled={timer > 0}
+              style={{ alignItems: 'center' }}
+            >
+              <Text style={{ color: timer > 0 ? colors.textMuted : colors.primary, fontWeight: 'bold' }}>
+                {timer > 0 ? `Resend code in ${timer}s` : "Resend Code"}
+              </Text>
+            </TouchableOpacity>
+          </Animated.View>
+        </View>
+      </KeyboardAvoidingView>
+    </SafeAreaView>
+  );
+}

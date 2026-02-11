@@ -3,18 +3,14 @@ import { body, validationResult } from "express-validator";
 import { authMiddleware, requireUser, type AuthRequest } from "../middleware/auth.js";
 import { prisma } from "../lib/prisma.js";
 import { AppError } from "../middleware/errorHandler.js";
+import { toDecimal } from "../lib/utils.js";
 import { suggestCategory } from "../services/smartCategories.js";
+import { logActivity, sendNotification, ActivityType } from "../services/activity.js";
 import { Decimal } from "@prisma/client/runtime/library";
 
 export const expensesRouter = Router();
 expensesRouter.use(authMiddleware);
 expensesRouter.use(requireUser);
-
-function toDecimal(n: number | string): Decimal {
-  const num = Number(n);
-  if (!isFinite(num)) return new Decimal(0);
-  return new Decimal(num.toFixed(2));
-}
 
 expensesRouter.get("/export", async (req: AuthRequest, res, next) => {
   try {
@@ -41,7 +37,7 @@ expensesRouter.get("/export", async (req: AuthRequest, res, next) => {
       const cat = e.category || "Other";
       const creator = e.creator.name;
       const group = e.group?.name || "Personal";
-      csv += `${date},${title},${amount},${cat},${creator},${group}\n`;
+      csv += `${date},${title},${amount},${cat},${creator},${group} \n`;
     }
 
     res.setHeader("Content-Type", "text/csv");
@@ -103,7 +99,7 @@ expensesRouter.post(
       console.log("POST /expenses payload:", JSON.stringify(req.body, null, 2));
       const err = validationResult(req);
       if (!err.isEmpty()) {
-        const msg = err.array().map(e => `${(e as any).path || (e as any).param}: ${e.msg}`).join(", ");
+        const msg = err.array().map(e => `${(e as any).path || (e as any).param}: ${e.msg} `).join(", ");
         throw new AppError(400, msg, "VALIDATION_ERROR");
       }
       const userId = (req as AuthRequest & { userEntity: { id: string } }).userEntity.id;
@@ -133,6 +129,29 @@ expensesRouter.post(
       if (!participants.includes(userId)) participants.push(userId);
 
       let categoryFinal = (category as string)?.trim() || suggestCategory(title, description);
+
+      if (groupId) {
+        const membership = await prisma.groupMember.findFirst({
+          where: { groupId, userId }
+        });
+        if (!membership) {
+          throw new AppError(403, "You are not a member of this group", "FORBIDDEN");
+        }
+      }
+
+      if (splits && Array.isArray(splits)) {
+        if (splitType === "EXACT") {
+          const totalOwed = (splits as { amountOwed: number }[]).reduce((s, split) => s + Number(split.amountOwed), 0);
+          if (Math.abs(totalOwed - Number(totalAmount)) > 0.02) {
+            throw new AppError(400, "Sum of splits must equal total amount", "VALIDATION_ERROR");
+          }
+        } else if (splitType === "PERCENTAGE") {
+          const totalPct = (splits as { percentage: number }[]).reduce((s, split) => s + Number(split.percentage), 0);
+          if (Math.abs(totalPct - 100) > 0.01) {
+            throw new AppError(400, "Sum of percentages must equal 100", "VALIDATION_ERROR");
+          }
+        }
+      }
 
       const expense = await prisma.$transaction(async (tx) => {
         const exp = await tx.expense.create({
@@ -241,6 +260,31 @@ expensesRouter.post(
         },
       });
       res.status(201).json(created);
+
+      // Async: Log activity & Notify participants (don't block the response)
+      (async () => {
+        try {
+          const activity = await logActivity({
+            userId,
+            type: ActivityType.EXPENSE_ADDED,
+            targetId: expense.id,
+            groupId: groupId || undefined,
+            data: { title, amount: totalAmount },
+          });
+
+          const otherParticipants = participants.filter((pId: string) => pId !== userId);
+          for (const pId of otherParticipants) {
+            await sendNotification(
+              pId,
+              "New Expense",
+              `${created?.creator.name} added "${title}" (₹${totalAmount})`,
+              activity?.id
+            );
+          }
+        } catch (err) {
+          console.error("[Activity/Notify] Background error:", err);
+        }
+      })();
     } catch (e) {
       next(e);
     }
