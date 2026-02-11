@@ -7,7 +7,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { useTheme } from "@/contexts/ThemeContext";
 import Animated, { FadeInDown, FadeInUp } from "react-native-reanimated";
 import { useAuthStore } from "@/store/authStore";
-
+import { Button } from "@/components/ui/Button";
 export default function OTPVerificationScreen() {
   const { colors } = useTheme();
   const { email } = useLocalSearchParams<{ email: string }>();
@@ -134,27 +134,12 @@ export default function OTPVerificationScreen() {
           </Animated.View>
 
           <Animated.View entering={FadeInDown.delay(600).duration(800)}>
-            <TouchableOpacity
-              style={{
-                height: 56,
-                borderRadius: 20,
-                backgroundColor: loading ? colors.surfaceActive : colors.primary,
-                alignItems: 'center',
-                justifyContent: 'center',
-                marginBottom: 24,
-                shadowColor: colors.primary,
-                shadowOffset: { width: 0, height: 4 },
-                shadowOpacity: 0.2,
-                shadowRadius: 8,
-                elevation: 4,
-              }}
+            <Button
+              title={loading ? "Verifying..." : "Verify & Proceed"}
               onPress={handleVerify}
-              disabled={loading}
-            >
-              <Text style={{ color: '#fff', fontWeight: 'bold', fontSize: 16 }}>
-                {loading ? "Verifying..." : "Verify & Proceed"}
-              </Text>
-            </TouchableOpacity>
+              loading={loading}
+              style={{ marginBottom: 24 }}
+            />
 
             <TouchableOpacity 
               onPress={handleResend}
