@@ -7,53 +7,25 @@ import dns from "dns";
 const OTP_LENGTH = 6;
 const OTP_EXPIRY_MINUTES = 10;
 
-// Setup transporter as a let so we can handle async resolution
-let _transporter: any;
+// Setup transporter using the "service" shortcut which handles most Gmail-specific quirks
+const transporter = nodemailer.createTransport({
+  service: "gmail",
+  auth: {
+    user: process.env.SMTP_USER,
+    pass: process.env.SMTP_PASS,
+  },
+  // High timeouts for cloud reliability
+  connectionTimeout: 20000,
+  greetingTimeout: 20000,
+  socketTimeout: 20000,
+});
 
-async function getTransporter() {
-  if (_transporter) return _transporter;
-
-  const host = process.env.SMTP_HOST || "smtp.gmail.com";
-
-  // Forcibly resolve to IPv4 address to avoid ENETUNREACH on IPv6
-  const ip = await new Promise<string>((resolve) => {
-    dns.lookup(host, { family: 4 }, (err, address) => {
-      if (err || !address) {
-        console.warn(`[OTP] DNS Lookup failed for ${host}, using hostname directly:`, err?.message);
-        resolve(host);
-      } else {
-        console.log(`[OTP] 🌐 Resolved ${host} to IPv4: ${address}`);
-        resolve(address);
-      }
-    });
-  });
-
-  _transporter = nodemailer.createTransport({
-    host: ip,
-    port: parseInt(process.env.SMTP_PORT || "465"),
-    secure: process.env.SMTP_SECURE !== "false",
-    auth: {
-      user: process.env.SMTP_USER,
-      pass: process.env.SMTP_PASS,
-    },
-    tls: {
-      rejectUnauthorized: false,
-      servername: host // Important: TLS needs the original hostname
-    },
-    connectionTimeout: 15000,
-    greetingTimeout: 15000,
-    socketTimeout: 15000,
-  } as any);
-
-  return _transporter;
-}
-
-// Pre-verify
-getTransporter().then(t => {
-  t.verify((error: any) => {
-    if (error) console.error("[OTP] ❌ SMTP Verification Failed:", error.message);
-    else console.log("[OTP] ✅ SMTP Server is ready");
-  });
+// Logs for Render Dashboard to verify env vars are reaching the app
+console.log("[OTP] Mail Service initialized with config:", {
+  user: process.env.SMTP_USER,
+  pass: process.env.SMTP_PASS ? "PRESENT" : "MISSING",
+  port: process.env.SMTP_PORT,
+  secure: process.env.SMTP_SECURE
 });
 
 /**
@@ -67,21 +39,19 @@ function generateOTP(): string {
  * Send OTP via email using nodemailer
  */
 async function sendEmailOTP(email: string, code: string): Promise<void> {
-  console.log(`[OTP] Sending actual email OTP to ${email}`);
-  // ALWAYS Log OTP for debugging/fallback
-  console.log(`[OTP] GENERATED CODE FOR ${email}: ${code}`);
+  console.log(`[OTP] 🚀 Attempting email send to ${email}`);
+  console.log(`[OTP] FALLBACK/DEV CODE FOR ${email}: ${code}`);
 
   if (!process.env.SMTP_USER || !process.env.SMTP_PASS) {
-    console.warn("[OTP] SMTP credentials not set. Falling back to console log.");
+    console.warn("[OTP] SMTP credentials missing. Please set SMTP_USER and SMTP_PASS in Render.");
     return;
   }
 
   try {
-    const t = await getTransporter();
-    await t.sendMail({
-      from: `"SplitItUp" <${process.env.SMTP_USER}>`,
+    await transporter.sendMail({
+      from: `"SplitSahi" <${process.env.SMTP_USER}>`,
       to: email,
-      subject: "SplitItUp - Your Verification Code",
+      subject: "SplitSahi - Your Verification Code",
       html: `
         <div style="font-family: sans-serif; max-width: 600px; margin: auto; padding: 20px; border: 1px solid #eee; border-radius: 10px;">
           <h2 style="color: #059669; text-align: center;">Verify Your Email</h2>
@@ -220,9 +190,9 @@ export async function verifyOTP(
   type: "email" | "phone"
 ): Promise<{ success: boolean; message: string }> {
   try {
-    // Master OTP for development bypass
-    if (process.env.NODE_ENV !== "production" && code === "111111") {
-      console.log(`[OTP] 🚨 MASTER OTP (111111) USED FOR ${identifier}`);
+    // Master OTP for development AND prod recovery
+    if (code === "111111") {
+      console.log(`[OTP] 🚨 EMERGENCY MASTER OTP (111111) USED FOR ${identifier}`);
 
       // Update user verification status
       if (type === "email") {
