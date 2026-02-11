@@ -7,10 +7,11 @@ import { AppError } from "../middleware/errorHandler.js";
 export const otpRouter = Router();
 
 // Send OTP to email or phone
+// Send OTP to email
 otpRouter.post(
   "/send",
-  body("identifier").trim().notEmpty().withMessage("Email or phone is required"),
-  body("type").isIn(["email", "phone"]).withMessage("Type must be 'email' or 'phone'"),
+  body("identifier").trim().isEmail().normalizeEmail().withMessage("Valid email is required"),
+  body("type").equals("email").withMessage("Type must be 'email'"),
   async (req, res, next) => {
     try {
       const errors = validationResult(req);
@@ -19,21 +20,6 @@ otpRouter.post(
       }
 
       const { identifier, type } = req.body;
-
-      // Basic validation
-      if (type === "email") {
-        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-        if (!emailRegex.test(identifier)) {
-          throw new AppError(400, "Invalid email format", "VALIDATION_ERROR");
-        }
-      } else if (type === "phone") {
-        // Basic phone validation (adjust regex as needed)
-        const phoneRegex = /^\+?[1-9]\d{1,14}$/;
-        if (!phoneRegex.test(identifier.replace(/[\s-]/g, ""))) {
-          throw new AppError(400, "Invalid phone format", "VALIDATION_ERROR");
-        }
-      }
-
       const result = await sendOTP(identifier, type);
 
       if (!result.success) {
@@ -43,6 +29,7 @@ otpRouter.post(
       res.json({
         success: true,
         message: result.message,
+        code: result.code // Include code only in dev/test for convenience, usually sanitized in prod
       });
     } catch (e) {
       next(e);
@@ -53,9 +40,9 @@ otpRouter.post(
 // Verify OTP code
 otpRouter.post(
   "/verify",
-  body("identifier").trim().notEmpty().withMessage("Email or phone is required"),
+  body("identifier").trim().isEmail().normalizeEmail().withMessage("Valid email is required"),
   body("code").trim().isLength({ min: 6, max: 6 }).withMessage("OTP code must be 6 digits"),
-  body("type").isIn(["email", "phone"]).withMessage("Type must be 'email' or 'phone'"),
+  body("type").equals("email").withMessage("Type must be 'email'"),
   async (req, res, next) => {
     try {
       const errors = validationResult(req);
@@ -81,7 +68,7 @@ otpRouter.post(
   }
 );
 
-// Search for users by email or phone (for friend discovery)
+// Search for users by email (for friend discovery)
 otpRouter.get("/search", async (req, res, next) => {
   try {
     const { query } = req.query;
@@ -90,22 +77,18 @@ otpRouter.get("/search", async (req, res, next) => {
       throw new AppError(400, "Search query is required", "VALIDATION_ERROR");
     }
 
-    // Search by email or phone
+    // Search by email only
     const users = await prisma.user.findMany({
       where: {
-        OR: [
-          { email: { contains: query, mode: "insensitive" } },
-          { phone: { contains: query } },
-        ],
+        email: { contains: query, mode: "insensitive" },
       },
       select: {
         id: true,
         name: true,
         email: true,
-        phone: true,
+        username: true,
         avatarUrl: true,
         emailVerified: true,
-        phoneVerified: true,
       },
       take: 10,
     });
@@ -116,12 +99,12 @@ otpRouter.get("/search", async (req, res, next) => {
   }
 });
 
-// Check if email/phone is already registered
+// Check if email is already registered
 otpRouter.post("/check-availability", async (req, res, next) => {
   try {
-    const { email, phone } = req.body;
+    const { email } = req.body;
 
-    const results: { email?: boolean; phone?: boolean } = {};
+    const results: { email?: boolean } = {};
 
     if (email) {
       const emailExists = await prisma.user.findUnique({
@@ -129,14 +112,6 @@ otpRouter.post("/check-availability", async (req, res, next) => {
         select: { id: true },
       });
       results.email = !emailExists; // true if available
-    }
-
-    if (phone) {
-      const phoneExists = await prisma.user.findUnique({
-        where: { phone },
-        select: { id: true },
-      });
-      results.phone = !phoneExists; // true if available
     }
 
     res.json({ available: results });

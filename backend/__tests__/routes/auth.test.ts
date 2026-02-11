@@ -34,7 +34,7 @@ describe('Auth Routes', () => {
                 email: 'test@example.com',
                 emailVerified: false,
                 name: 'Test User',
-                phone: '+1234567890',
+                phone: null,
                 phoneVerified: false,
                 passwordHash: await bcrypt.hash('password123', 10),
                 clerkId: null,
@@ -57,7 +57,6 @@ describe('Auth Routes', () => {
                     email: 'test@example.com',
                     password: 'password123',
                     name: 'Test User',
-                    phone: '+1234567890',
                     username: 'testuser',
                 });
 
@@ -68,15 +67,15 @@ describe('Auth Routes', () => {
             expect(response.body.user).not.toHaveProperty('password');
         });
 
-        it('should return 400 if user already exists', async () => {
+        it('should return 400 if email already exists', async () => {
             const existingUser = {
                 id: 'user-123',
                 username: 'existinguser',
                 email: 'existing@example.com',
                 emailVerified: true,
                 name: 'Existing User',
-                phone: '+1234567890',
-                phoneVerified: true,
+                phone: null,
+                phoneVerified: false,
                 passwordHash: 'hashedpass',
                 clerkId: null,
                 oauthProvider: null,
@@ -97,11 +96,11 @@ describe('Auth Routes', () => {
                     email: 'existing@example.com',
                     password: 'password123',
                     name: 'New User',
-                    phone: '+9876543210',
                     username: 'newuser',
                 });
 
             expect(response.status).toBe(400);
+            expect(response.error).toBeDefined();
         });
 
         it('should return 400 with invalid email format', async () => {
@@ -111,7 +110,6 @@ describe('Auth Routes', () => {
                     email: 'invalid-email',
                     password: 'password123',
                     name: 'Test User',
-                    phone: '+1234567890',
                     username: 'testuser',
                 });
 
@@ -125,7 +123,6 @@ describe('Auth Routes', () => {
                     email: 'test@example.com',
                     password: '123',
                     name: 'Test User',
-                    phone: '+1234567890',
                     username: 'testuser',
                 });
 
