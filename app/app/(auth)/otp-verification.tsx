@@ -10,7 +10,7 @@ import { useAuthStore } from "@/store/authStore";
 
 export default function OTPVerificationScreen() {
   const { colors } = useTheme();
-  const { phone, email } = useLocalSearchParams<{ phone: string; email?: string }>();
+  const { email } = useLocalSearchParams<{ email: string }>();
   const [otp, setOtp] = useState(["", "", "", "", "", ""]);
   const [loading, setLoading] = useState(false);
   const [timer, setTimer] = useState(30);
@@ -50,24 +50,17 @@ export default function OTPVerificationScreen() {
 
     setLoading(true);
     try {
-      const res = await apiPost<{ user?: any; token?: string; needsRegistration?: boolean; verifiedIdentifier?: string }>("/auth/verify-otp", {
-        identifier: phone || email,
+      const res = await apiPost<{ user?: any; token?: string; needsRegistration?: boolean }>("/auth/verify-otp", {
+        identifier: email,
         otp: code,
-        type: phone ? "phone" : "email"
+        type: "email"
       }, { skipAuth: true });
 
       if (res.token && res.user) {
         await setAuth(res.token, res.user);
         router.replace("/(tabs)");
-      } else if (res.needsRegistration) {
-        // Redirect to registration with pre-verified phone
-        router.push({
-          pathname: "/(auth)/register",
-          params: { 
-            phone: res.verifiedIdentifier || phone?.trim(),
-            verified: "true"
-          }
-        });
+      } else {
+        Alert.alert("Error", "Verification failed. User not found.");
       }
     } catch (e: any) {
       Alert.alert("Verification failed", e instanceof Error ? e.message : "Invalid OTP");
@@ -81,8 +74,8 @@ export default function OTPVerificationScreen() {
     
     try {
       await apiPost("/auth/send-otp", {
-        identifier: phone || email,
-        type: phone ? "phone" : "email"
+        identifier: email,
+        type: "email"
       }, { skipAuth: true });
       setTimer(30);
       Alert.alert("Success", "OTP resent successfully");
@@ -110,17 +103,17 @@ export default function OTPVerificationScreen() {
             <Text style={{ fontSize: 28, fontWeight: 'bold', color: colors.text, marginBottom: 8 }}>Verify Identity</Text>
             <Text style={{ color: colors.textSecondary, textAlign: 'center', fontSize: 16 }}>
               We've sent a 6-digit code to{"\n"}
-              <Text style={{ color: colors.text, fontWeight: 'bold' }}>{phone || email}</Text>
+              <Text style={{ color: colors.text, fontWeight: 'bold' }}>{email}</Text>
             </Text>
           </Animated.View>
 
-          <Animated.View entering={FadeInDown.delay(400).duration(800)} style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 40 }}>
+          <Animated.View entering={FadeInDown.delay(400).duration(800)} style={{ flexDirection: 'row', justifyContent: 'center', gap: 8, marginBottom: 40 }}>
             {otp.map((digit, idx) => (
               <TextInput
                 key={idx}
-                ref={(ref) => { inputs.current[idx] = ref; }}
+                ref={(inst) => { inputs.current[idx] = inst; }}
                 style={{
-                  width: 50,
+                  width: 45,
                   height: 60,
                   backgroundColor: colors.surface,
                   borderRadius: 12,

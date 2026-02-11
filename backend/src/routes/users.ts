@@ -51,7 +51,7 @@ usersRouter.patch(
   }
 );
 
-// Search users by phone/email for adding friends
+// Search users by email/name/username for adding friends
 usersRouter.get("/search", async (req: AuthRequest, res, next) => {
   try {
     const q = (req.query.q as string)?.trim();
@@ -65,18 +65,18 @@ usersRouter.get("/search", async (req: AuthRequest, res, next) => {
         OR: [
           { username: { contains: q, mode: "insensitive" } },
           { email: { contains: q, mode: "insensitive" } },
-          { phone: { contains: q } },
           { name: { contains: q, mode: "insensitive" } },
         ],
       },
       take: 20,
-      select: { id: true, name: true, email: true, phone: true, username: true, avatarUrl: true, emoji: true },
+      select: { id: true, name: true, email: true, username: true, avatarUrl: true, emoji: true },
     });
     res.json(users);
   } catch (e) {
     next(e);
   }
 });
+
 
 // Categories for smart categorization
 usersRouter.get("/categories", async (_req, res, next) => {

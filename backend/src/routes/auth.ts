@@ -7,18 +7,17 @@ export const authRouter = Router();
 
 authRouter.post(
   "/register",
-  body("email").optional().isEmail().normalizeEmail(),
-  body("password").optional().isLength({ min: 6 }),
-  body("name").trim().notEmpty(),
-  body("phone").trim().notEmpty(),
-  body("username").trim().isLength({ min: 3 }).matches(/^[a-zA-Z0-9_]+$/),
+  body("email").isEmail().normalizeEmail().withMessage("Valid email is required"),
+  body("password").isLength({ min: 6 }).withMessage("Password must be at least 6 characters"),
+  body("name").trim().notEmpty().withMessage("Name is required"),
+  body("username").trim().isLength({ min: 3 }).matches(/^[a-zA-Z0-9_]+$/).withMessage("Username must be at least 3 chars alphanumeric"),
   body("emoji").optional(),
   async (req, res, next) => {
     try {
       const err = validationResult(req);
       if (!err.isEmpty()) throw new AppError(400, err.array()[0].msg, "VALIDATION_ERROR");
-      const { email, password, name, phone, username, emoji, skipOTP } = req.body;
-      const result = await register(email, password, name, phone, username, emoji, skipOTP);
+      const { email, password, name, username, emoji, skipOTP } = req.body;
+      const result = await register(email, password, name, username, emoji, skipOTP);
       res.status(201).json(result);
     } catch (e) {
       next(e);
