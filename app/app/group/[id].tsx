@@ -296,109 +296,132 @@ export default function GroupDetailScreen() {
   );
 }
 
-function GroupBalances({ groupId, groupData }: { groupId: string, groupData: Group }) {
+
+function GroupBalances({ groupId, groupData }: { groupId: string, groupData: any }) {
   const { colors } = useTheme();
   const currentUserId = useAuthStore((s) => s.user?.id);
   const [showAll, setShowAll] = useState(false);
-  const isAdmin = groupData.members.find(m => m.userId === currentUserId)?.role === "ADMIN";
+  const [useSimplified, setUseSimplified] = useState(false);
   
-  const { data } = useQuery({
+  // Regular dashboard data
+  const { data: dashboardData } = useQuery({
     queryKey: ["dashboard", groupId],
     queryFn: () => apiGet<any>(`/dashboard?groupId=${groupId}`),
   });
 
-  const allTransactions = data?.simplifiedTransactions || [];
-  const youOwe = data?.youOwe || 0;
-  const youAreOwed = data?.youAreOwed || 0;
+  // Simplified debts data
+  const { data: simplifiedDebts } = useQuery({
+    queryKey: ["simplified-debts", groupId],
+    queryFn: () => apiGet<any[]>(`/groups/${groupId}/simplified-debts`),
+    enabled: useSimplified,
+  });
 
-  const relevantTransactions = allTransactions.filter((t: any) => 
-    t.fromUserId === currentUserId || t.toUserId === currentUserId
-  );
+  const transactions = useSimplified 
+    ? (simplifiedDebts || []) 
+    : (dashboardData?.recommendedActions || []);
 
-  const transactions = showAll ? allTransactions : relevantTransactions;
+  const totalOwes = dashboardData?.totalOwes || 0;
+  const totalOwed = dashboardData?.totalOwed || 0;
 
   return (
-    <View style={{ marginTop: 32 }}>
-      {/* Balance Summary */}
+    <View style={{ marginTop: 32, marginBottom: 40 }}>
+      {/* Metrics */}
       <View style={{ flexDirection: 'row', gap: 12, marginBottom: 24 }}>
-        <View style={{ flex: 1, backgroundColor: colors.errorLight, borderRadius: 16, padding: 16, borderWidth: 1, borderColor: colors.error }}>
-          <Text style={{ color: colors.error, fontSize: 12, fontWeight: 'bold', marginBottom: 4 }}>You Owe</Text>
-          <Text style={{ color: colors.error, fontWeight: 'bold', fontSize: 20 }}>₹{youOwe.toFixed(0)}</Text>
-        </View>
-        <View style={{ flex: 1, backgroundColor: colors.successLight, borderRadius: 16, padding: 16, borderWidth: 1, borderColor: colors.success }}>
-          <Text style={{ color: colors.success, fontSize: 12, fontWeight: 'bold', marginBottom: 4 }}>You Get</Text>
-          <Text style={{ color: colors.success, fontWeight: 'bold', fontSize: 20 }}>₹{youAreOwed.toFixed(0)}</Text>
-        </View>
+          <View style={{ flex: 1, backgroundColor: colors.surface, borderRadius: 16, padding: 16, borderWidth: 1, borderColor: colors.error }}>
+             <Text style={{ color: colors.error, fontSize: 12, fontWeight: 'bold' }}>You Owe</Text>
+             <Text style={{ color: colors.error, fontSize: 24, fontWeight: 'bold', marginTop: 4 }}>₹{Math.abs(totalOwes).toFixed(0)}</Text>
+          </View>
+          <View style={{ flex: 1, backgroundColor: colors.surface, borderRadius: 16, padding: 16, borderWidth: 1, borderColor: colors.success }}>
+             <Text style={{ color: colors.success, fontSize: 12, fontWeight: 'bold' }}>You are owed</Text>
+             <Text style={{ color: colors.success, fontSize: 24, fontWeight: 'bold', marginTop: 4 }}>₹{Math.abs(totalOwed).toFixed(0)}</Text>
+          </View>
       </View>
 
-      {allTransactions.length > 0 && (
-        <>
-          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
-            <Text style={{ color: colors.textSecondary, fontWeight: 'bold', fontSize: 14 }}>
-              {showAll ? "All Group Settlements" : "Your Settlements"}
-            </Text>
-            {isAdmin && allTransactions.length > relevantTransactions.length && (
-              <TouchableOpacity onPress={() => setShowAll(!showAll)}>
-                <Text style={{ color: colors.primary, fontSize: 12, fontWeight: 'bold' }}>
-                  {showAll ? "Show Less" : "Show All (Admin)"}
-                </Text>
-              </TouchableOpacity>
-            )}
-          </View>
-          
-          <View style={{ gap: 8 }}>
-            {transactions.map((t: any, i: number) => {
-               const isOwedToMe = t.toUserId === currentUserId;
-               const isOwedByMe = t.fromUserId === currentUserId;
-
-               return (
-              <View key={i} style={{ backgroundColor: colors.surface, borderRadius: 16, padding: 16, borderWidth: 1, borderColor: colors.border, flexDirection: 'row', alignItems: 'center' }}>
-                <View style={{ flex: 1 }}>
-                  <Text style={{ color: colors.text, fontSize: 14 }}>
-                      <Text style={{ fontWeight: 'bold' }}>{t.fromUserId === currentUserId ? "You" : t.fromUser?.name}</Text> 
-                      {" " + (t.fromUserId === currentUserId ? "owe" : "owes") + " "}
-                      <Text style={{ fontWeight: 'bold' }}>{t.toUserId === currentUserId ? "You" : t.toUser?.name}</Text>
-                  </Text>
-                  <Text style={{ color: colors.success, fontWeight: 'bold', fontSize: 14, marginTop: 4 }}>₹{t.amount.toFixed(2)}</Text>
-                </View>
-                
-                <View style={{ gap: 8 }}> 
-                    {isOwedToMe && (
-                        <TouchableOpacity 
-                        style={{ backgroundColor: colors.primary, paddingHorizontal: 12, paddingVertical: 6, borderRadius: 8 }}
-                        onPress={async () => {
-                            const personToRemind = t.fromUser;
-                            const text = `Hi ${personToRemind?.name}, reminder to pay ₹${t.amount} in group.`;
-                            const url = `whatsapp://send?text=${encodeURIComponent(text)}`;
-                             try { await Linking.openURL(url); } catch { Alert.alert("Reminder", text); }
-                        }}
-                        >
-                        <Text style={{ color: '#fff', fontWeight: 'bold', fontSize: 10 }}>Remind</Text>
-                        </TouchableOpacity>
-                    )}
-                    
-                    {(isOwedByMe || isOwedToMe) && (
-                        <TouchableOpacity 
-                        style={{ backgroundColor: colors.surfaceActive, paddingHorizontal: 12, paddingVertical: 6, borderRadius: 8, borderWidth: 1, borderColor: colors.border }}
-                        onPress={() => router.push({
-                            pathname: "/new/settlement",
-                            params: { 
-                                toUserId: (t.toUserId === currentUserId ? t.fromUserId : t.toUserId), 
-                                amount: t.amount.toString(), 
-                                groupId,
-                                direction: t.toUserId === currentUserId ? "THEY_PAID" : "YOU_PAID"
-                            }
-                        })}
-                        >
-                        <Text style={{ color: colors.text, fontWeight: 'bold', fontSize: 10 }}>Settle</Text>
-                        </TouchableOpacity>
-                    )}
-                </View>
-              </View>
-            )})}
-          </View>
-        </>
+      {/* Toggle Simplification */}
+      <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+        <Text style={{ color: colors.text, fontWeight: 'bold', fontSize: 16 }}>Settlements</Text>
+        <TouchableOpacity 
+          onPress={() => setUseSimplified(!useSimplified)}
+          style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: useSimplified ? colors.primary + '20' : colors.surface, paddingHorizontal: 12, paddingVertical: 6, borderRadius: 20, borderWidth: 1, borderColor: useSimplified ? colors.primary : colors.border }}
+        >
+          <Ionicons name="git-merge-outline" size={16} color={useSimplified ? colors.primary : colors.textSecondary} />
+          <Text style={{ marginLeft: 6, fontSize: 12, fontWeight: 'bold', color: useSimplified ? colors.primary : colors.textSecondary }}>
+            {useSimplified ? "Simplified" : "Standard"}
+          </Text>
+        </TouchableOpacity>
+      </View>
+      
+      {useSimplified && (
+        <View style={{ backgroundColor: colors.primary + '10', padding: 12, borderRadius: 12, marginBottom: 16, flexDirection: 'row', alignItems: 'center' }}>
+          <Ionicons name="information-circle" size={20} color={colors.primary} />
+          <Text style={{ flex: 1, marginLeft: 8, fontSize: 12, color: colors.text, lineHeight: 18 }}>
+            Simplified debts minimize the total number of transactions needed to settle up the group.
+          </Text>
+        </View>
       )}
+
+      {/* List */}
+      <View style={{ gap: 12 }}>
+        {transactions.map((t: any, i: number) => {
+          // Check structure difference between simplified (from/to objects) vs dashboard (fromUserId string)
+          const fromUser = t.from || t.fromUser;
+          const toUser = t.to || t.toUser;
+          const fromName = fromUser?.id === currentUserId ? "You" : fromUser?.name;
+          const toName = toUser?.id === currentUserId ? "You" : toUser?.name;
+          
+          const isMeInvolved = fromUser?.id === currentUserId || toUser?.id === currentUserId;
+
+          return (
+            <View key={i} style={{ 
+              backgroundColor: colors.surface, 
+              padding: 16, 
+              borderRadius: 16, 
+              borderWidth: 1, 
+              borderColor: colors.border,
+              flexDirection: 'row',
+              justifyContent: 'space-between',
+              alignItems: 'center'
+            }}>
+               <View style={{ flex: 1 }}>
+                 <View style={{ flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap' }}>
+                    <Avatar name={fromUser?.name || "?"} url={fromUser?.avatarUrl} size={24} />
+                    <Ionicons name="arrow-forward" size={16} color={colors.textTertiary} style={{ marginHorizontal: 8 }} />
+                    <Avatar name={toUser?.name || "?"} url={toUser?.avatarUrl} size={24} />
+                 </View>
+                 <Text style={{ marginTop: 8, color: colors.text, fontSize: 14 }}>
+                    <Text style={{ fontWeight: 'bold' }}>{fromName}</Text> pays <Text style={{ fontWeight: 'bold' }}>{toName}</Text>
+                 </Text>
+               </View>
+
+               <View style={{ alignItems: 'flex-end', marginLeft: 12 }}>
+                  <Text style={{ fontSize: 16, fontWeight: 'bold', color: colors.success }}>₹{Number(t.amount).toFixed(0)}</Text>
+                  
+                  {isMeInvolved && (
+                    <TouchableOpacity 
+                      style={{ marginTop: 8, backgroundColor: colors.primary, paddingHorizontal: 12, paddingVertical: 6, borderRadius: 8 }}
+                      onPress={() => {
+                        router.push({
+                          pathname: "/new/settlement",
+                          params: {
+                            groupId,
+                            toUserId: fromUser.id === currentUserId ? toUser.id : fromUser.id,
+                            amount: t.amount.toString(),
+                            direction: fromUser.id === currentUserId ? "YOU_PAID" : "THEY_PAID"
+                          }
+                        });
+                      }}
+                    >
+                      <Text style={{ color: '#fff', fontSize: 10, fontWeight: 'bold' }}>Settle</Text>
+                    </TouchableOpacity>
+                  )}
+               </View>
+            </View>
+          );
+        })}
+        {transactions.length === 0 && (
+          <Text style={{ textAlign: 'center', color: colors.textSecondary, marginTop: 20 }}>No debts found. You're all settled up!</Text>
+        )}
+      </View>
     </View>
   );
 }

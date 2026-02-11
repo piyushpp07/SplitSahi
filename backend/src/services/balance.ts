@@ -1,6 +1,7 @@
 import { prisma } from "../lib/prisma.js";
 import { Decimal } from "@prisma/client/runtime/library";
-import { simplifyDebts, type NetBalance, type SimplifiedTransaction } from "./debtSimplification.js";
+import { simplifyNetBalances, type NetBalance, type SimplifiedTransaction } from "./debtSimplification.js";
+
 
 function toNum(d: Decimal | number): number {
   if (typeof d === "number") return d;
@@ -73,7 +74,7 @@ export async function getNetBalancesForUser(userId: string, groupId?: string | n
   const result: NetBalance[] = [];
   for (const [uid, net] of netMap) {
     if (Math.abs(net) >= 0.01) {
-      result.push({ userId: uid, net });
+      result.push({ userId: uid, amount: net });
     }
   }
   return result;
@@ -85,13 +86,17 @@ export async function getSimplifiedTransactions(
 ): Promise<SimplifiedTransaction[]> {
   const balances = await getNetBalancesForUser(userId, groupId);
 
-  // We use debt simplification regardless of group/global
-  // to ensure that complex multi-payer expenses are handled correctly.
-  const allSimplified = simplifyDebts(balances);
+  // Convert NetBalance[] to Record<string, number>
+  const balanceMap: Record<string, number> = {};
+  for (const b of balances) {
+    balanceMap[b.userId] = b.amount;
+  }
 
-  // BUT we strictly filter to ONLY show transactions where this user is involved.
-  // This prevents Piyush from seeing "Akhil owes Vinay".
-  return allSimplified.filter(t => t.fromUserId === userId || t.toUserId === userId);
+  // We use debt simplification regardless of group/global
+  const allSimplified = simplifyNetBalances(balanceMap);
+
+  // Filter for user
+  return allSimplified.filter(t => t.from === userId || t.to === userId);
 }
 
 /**
@@ -109,10 +114,10 @@ export async function getDashboardTotals(userId: string, groupId?: string | null
   let youAreOwed = 0;
 
   for (const t of simplifiedTransactions) {
-    if (t.fromUserId === userId) {
+    if (t.from === userId) {
       youOwe += t.amount;
     }
-    if (t.toUserId === userId) {
+    if (t.to === userId) {
       youAreOwed += t.amount;
     }
   }

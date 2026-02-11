@@ -1,4 +1,4 @@
-import { useState, useCallback, useMemo } from "react";
+import { useState, useCallback, useMemo, memo } from "react";
 import { View, Text, ScrollView, TouchableOpacity, Linking, Alert, TextInput, RefreshControl, StyleSheet, Dimensions, LayoutAnimation } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
@@ -7,6 +7,7 @@ import { apiGet } from "@/lib/api";
 import { useAuthStore } from "@/store/authStore";
 import { router, useFocusEffect } from "expo-router";
 import { useTheme } from "@/contexts/ThemeContext";
+import Animated, { FadeInDown, FadeInUp, Layout } from "react-native-reanimated";
 
 const { width } = Dimensions.get("window");
 
@@ -514,7 +515,7 @@ export default function DashboardScreen() {
     }
     
     setSettling(`${transaction.fromUserId}-${transaction.toUserId}`);
-    const upiUrl = `upi://pay?pa=${encodeURIComponent(toUser.upiId)}&pn=${encodeURIComponent(toUser.name)}&am=${transaction.amount}&cu=INR&tn=SplitSahiSe%20Settlement`;
+    const upiUrl = `upi://pay?pa=${encodeURIComponent(toUser.upiId)}&pn=${encodeURIComponent(toUser.name)}&am=${transaction.amount}&cu=INR&tn=SplitItUp%20Settlement`;
     
     try {
       await Linking.openURL(upiUrl);
@@ -524,6 +525,49 @@ export default function DashboardScreen() {
       setSettling(null);
     }
   }
+
+  // Balance Card with Animation
+  const renderBalanceCard = () => (
+    <Animated.View 
+      entering={FadeInUp.delay(300).duration(800)}
+      style={styles.balanceCard}
+    >
+      <Text style={styles.balanceLabel}>Net Balance</Text>
+      <View style={{flexDirection: 'row', alignItems: 'flex-end', justifyContent: 'space-between'}}>
+        <Text style={[styles.balanceAmount, netBalance >= 0 ? styles.positive : styles.negative]}>
+          {netBalance >= 0 ? '+' : ''}₹{Math.abs(netBalance).toFixed(2)}
+        </Text>
+        {netBalance !== 0 && (
+          <View style={{paddingBottom: 24}}>
+              <Text style={{color: netBalance > 0 ? colors.success : colors.error, fontWeight: 'bold', fontSize: 12}}>
+                  {netBalance > 0 ? "You are owed" : "You owe"}
+              </Text>
+          </View>
+        )}
+      </View>
+      
+      <View style={styles.balanceRow}>
+        <View style={styles.balanceItem}>
+          <View style={styles.balanceIconRed}>
+            <Ionicons name="arrow-down" size={14} color={colors.error} />
+          </View>
+          <View>
+            <Text style={styles.balanceItemLabel}>You Owe</Text>
+            <Text style={styles.balanceItemValue}>₹{youOwe.toFixed(0)}</Text>
+          </View>
+        </View>
+        <View style={styles.balanceItem}>
+          <View style={styles.balanceIconGreen}>
+            <Ionicons name="arrow-up" size={14} color={colors.success} />
+          </View>
+          <View>
+            <Text style={styles.balanceItemLabel}>You Get</Text>
+            <Text style={styles.balanceItemValue}>₹{youAreOwed.toFixed(0)}</Text>
+          </View>
+        </View>
+      </View>
+    </Animated.View>
+  );
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
@@ -536,7 +580,10 @@ export default function DashboardScreen() {
         }
       >
         {/* Header */}
-        <View style={styles.header}>
+        <Animated.View 
+          entering={FadeInDown.duration(800)}
+          style={styles.header}
+        >
           <View>
             <Text style={styles.greeting}>{getGreeting()}</Text>
             <Text style={styles.userName}>{userName?.split(' ')[0] || 'User'} 👋</Text>
@@ -559,7 +606,7 @@ export default function DashboardScreen() {
               <Ionicons name="people" size={18} color={colors.textSecondary} />
             </TouchableOpacity>
           </View>
-        </View>
+        </Animated.View>
         
         {showSearch && (
           <View style={styles.searchContainer}>
@@ -587,60 +634,27 @@ export default function DashboardScreen() {
         )}
 
         {/* Balance Card */}
-        <View style={styles.balanceCard}>
-          <Text style={styles.balanceLabel}>Net Balance</Text>
-          <View style={{flexDirection: 'row', alignItems: 'flex-end', justifyContent: 'space-between'}}>
-            <Text style={[styles.balanceAmount, netBalance >= 0 ? styles.positive : styles.negative]}>
-              {netBalance >= 0 ? '+' : ''}₹{Math.abs(netBalance).toFixed(2)}
-            </Text>
-            {netBalance !== 0 && (
-              <View style={{paddingBottom: 24}}>
-                  <Text style={{color: netBalance > 0 ? colors.success : colors.error, fontWeight: 'bold', fontSize: 12}}>
-                      {netBalance > 0 ? "You are owed" : "You owe"}
-                  </Text>
-              </View>
-            )}
-          </View>
-          
-          <View style={styles.balanceRow}>
-            <View style={styles.balanceItem}>
-              <View style={styles.balanceIconRed}>
-                <Ionicons name="arrow-down" size={14} color={colors.error} />
-              </View>
-              <View>
-                <Text style={styles.balanceItemLabel}>You Owe</Text>
-                <Text style={styles.balanceItemValue}>₹{youOwe.toFixed(0)}</Text>
-              </View>
-            </View>
-            <View style={styles.balanceItem}>
-              <View style={styles.balanceIconGreen}>
-                <Ionicons name="arrow-up" size={14} color={colors.success} />
-              </View>
-              <View>
-                <Text style={styles.balanceItemLabel}>You Get</Text>
-                <Text style={styles.balanceItemValue}>₹{youAreOwed.toFixed(0)}</Text>
-              </View>
-            </View>
-          </View>
-        </View>
+        {renderBalanceCard()}
 
         {/* Analytics Banner */}
-        <TouchableOpacity 
-          style={styles.analyticsBanner}
-          onPress={() => router.push("/analytics")}
-          activeOpacity={0.9}
-        >
-          <View style={{flexDirection: 'row', alignItems: 'center'}}>
-            <View style={styles.analyticsIcon}>
-              <Ionicons name="pie-chart" size={20} color="#fff" />
+        <Animated.View entering={FadeInDown.delay(400).duration(800)}>
+          <TouchableOpacity 
+            style={styles.analyticsBanner}
+            onPress={() => router.push("/analytics")}
+            activeOpacity={0.9}
+          >
+            <View style={{flexDirection: 'row', alignItems: 'center'}}>
+              <View style={styles.analyticsIcon}>
+                <Ionicons name="pie-chart" size={20} color="#fff" />
+              </View>
+              <View style={{marginLeft: 12}}>
+                <Text style={styles.analyticsTitle}>Spending Insights</Text>
+                <Text style={styles.analyticsSubtitle}>Track your monthly expenses</Text>
+              </View>
             </View>
-            <View style={{marginLeft: 12}}>
-              <Text style={styles.analyticsTitle}>Spending Insights</Text>
-              <Text style={styles.analyticsSubtitle}>Track your monthly expenses</Text>
-            </View>
-          </View>
-          <Ionicons name="chevron-forward" size={20} color="rgba(255,255,255,0.6)" />
-        </TouchableOpacity>
+            <Ionicons name="chevron-forward" size={20} color="rgba(255,255,255,0.6)" />
+          </TouchableOpacity>
+        </Animated.View>
 
         {/* Quick Actions */}
         <View style={styles.section}>
@@ -714,77 +728,18 @@ export default function DashboardScreen() {
             </View>
           ) : (
             <View style={{ gap: 12 }}>
-              {filteredTransactions.map((t) => {
-                const isPayer = userId === t.fromUserId;
-                const isSettling = settling === `${t.fromUserId}-${t.toUserId}`;
-                
-                return (
-                  <View key={`${t.fromUserId}-${t.toUserId}`} style={styles.transactionCard}>
-                    <View style={styles.transactionHeader}>
-                      <View style={styles.avatar}>
-                        <Text style={styles.avatarText}>{t.fromUser?.name?.charAt(0)}</Text>
-                      </View>
-                      <View style={{ flex: 1 }}>
-                        <Text style={styles.transactionName}>
-                          {t.fromUserId === userId ? "You" : t.fromUser?.name}
-                        </Text>
-                        <Text style={styles.transactionSubtext}>
-                          {(t.fromUserId === userId ? "owe " : "owes ")}
-                          {t.toUserId === userId ? "You" : t.toUser?.name}
-                        </Text>
-                      </View>
-                      <Text style={styles.transactionAmount}>₹{t.amount.toFixed(0)}</Text>
-                    </View>
-                    
-                    {isPayer ? (
-                      <View style={styles.actionRow}>
-                        <TouchableOpacity
-                          style={styles.recordBtn}
-                          onPress={() => router.push({
-                            pathname: "/new/settlement",
-                            params: { 
-                              toUserId: t.toUserId, 
-                              amount: t.amount.toString(),
-                              direction: "YOU_PAID"
-                            }
-                          })}
-                        >
-                          <Ionicons name="receipt" size={16} color={colors.textSecondary} />
-                          <Text style={styles.recordBtnText}>Record</Text>
-                        </TouchableOpacity>
-                        <TouchableOpacity
-                          style={[styles.payBtn, isSettling && styles.payBtnDisabled]}
-                          onPress={() => openUPIPay(t)}
-                          disabled={isSettling}
-                        >
-                          <Ionicons name="flash" size={16} color="#fff" />
-                          <Text style={styles.payBtnText}>{isSettling ? "Opening..." : "Pay Now"}</Text>
-                        </TouchableOpacity>
-                      </View>
-                    ) : (
-                      <View style={styles.actionRow}>
-                        <View style={[styles.incomingBadge, { flex: 1 }]}>
-                          <Text style={styles.incomingText}>💰 Payment incoming</Text>
-                        </View>
-                        <TouchableOpacity
-                          style={[styles.recordBtn, { marginLeft: 12 }]}
-                          onPress={() => router.push({
-                            pathname: "/new/settlement",
-                            params: { 
-                              toUserId: t.fromUserId, 
-                              amount: t.amount.toString(),
-                              direction: "THEY_PAID"
-                            }
-                          })}
-                        >
-                          <Ionicons name="checkmark-circle" size={16} color={colors.success} />
-                          <Text style={[styles.recordBtnText, { color: colors.success }]}>Settle</Text>
-                        </TouchableOpacity>
-                      </View>
-                    )}
-                  </View>
-                );
-              })}
+              {filteredTransactions.map((t, index) => (
+                <TransactionItem 
+                  key={`${t.fromUserId}-${t.toUserId}`} 
+                  transaction={t} 
+                  userId={userId} 
+                  settling={settling} 
+                  colors={colors} 
+                  styles={styles}
+                  onPay={openUPIPay}
+                  index={index}
+                />
+              ))}
             </View>
           )}
         </View>
@@ -792,3 +747,78 @@ export default function DashboardScreen() {
     </SafeAreaView>
   );
 }
+
+const TransactionItem = memo(({ transaction, userId, settling, colors, styles, onPay, index }: any) => {
+  const isPayer = userId === transaction.fromUserId;
+  const isSettling = settling === `${transaction.fromUserId}-${transaction.toUserId}`;
+  
+  return (
+    <Animated.View 
+      entering={FadeInDown.delay(500 + (index * 100)).duration(600)}
+      style={styles.transactionCard}
+    >
+      <View style={styles.transactionHeader}>
+        <View style={styles.avatar}>
+          <Text style={styles.avatarText}>{transaction.fromUser?.name?.charAt(0)}</Text>
+        </View>
+        <View style={{ flex: 1 }}>
+          <Text style={styles.transactionName}>
+            {transaction.fromUserId === userId ? "You" : transaction.fromUser?.name}
+          </Text>
+          <Text style={styles.transactionSubtext}>
+            {(transaction.fromUserId === userId ? "owe " : "owes ")}
+            {transaction.toUserId === userId ? "You" : transaction.toUser?.name}
+          </Text>
+        </View>
+        <Text style={styles.transactionAmount}>₹{transaction.amount.toFixed(0)}</Text>
+      </View>
+      
+      {isPayer ? (
+        <View style={styles.actionRow}>
+          <TouchableOpacity
+            style={styles.recordBtn}
+            onPress={() => router.push({
+              pathname: "/new/settlement",
+              params: { 
+                toUserId: transaction.toUserId, 
+                amount: transaction.amount.toString(),
+                direction: "YOU_PAID"
+              }
+            })}
+          >
+            <Ionicons name="receipt" size={16} color={colors.textSecondary} />
+            <Text style={styles.recordBtnText}>Record</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.payBtn, isSettling && styles.payBtnDisabled]}
+            onPress={() => onPay(transaction)}
+            disabled={isSettling}
+          >
+            <Ionicons name="flash" size={16} color="#fff" />
+            <Text style={styles.payBtnText}>{isSettling ? "Opening..." : "Pay Now"}</Text>
+          </TouchableOpacity>
+        </View>
+      ) : (
+        <View style={styles.actionRow}>
+          <View style={[styles.incomingBadge, { flex: 1 }]}>
+            <Text style={styles.incomingText}>💰 Payment incoming</Text>
+          </View>
+          <TouchableOpacity
+            style={[styles.recordBtn, { marginLeft: 12 }]}
+            onPress={() => router.push({
+              pathname: "/new/settlement",
+              params: { 
+                toUserId: transaction.fromUserId, 
+                amount: transaction.amount.toString(),
+                direction: "THEY_PAID"
+              }
+            })}
+          >
+            <Ionicons name="checkmark-circle" size={16} color={colors.success} />
+            <Text style={[styles.recordBtnText, { color: colors.success }]}>Settle</Text>
+          </TouchableOpacity>
+        </View>
+      )}
+    </Animated.View>
+  );
+});

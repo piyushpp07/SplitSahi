@@ -1,9 +1,30 @@
+import Constants from "expo-constants";
+import { Platform } from "react-native";
+
 /**
- * API client for SplitSahiSe backend.
+ * API client for SplitItUp backend.
  * Uses React Query in components; this is the raw fetch wrapper.
  */
 
-export const API_URL = process.env.EXPO_PUBLIC_API_URL ?? "http://localhost:4000/api";
+const getLocalUrl = () => {
+  if (process.env.EXPO_PUBLIC_API_URL) return process.env.EXPO_PUBLIC_API_URL;
+
+  // In development, try to use the Expo host IP (LAN IP)
+  const debuggerHost = Constants.expoConfig?.hostUri;
+  const localhost = debuggerHost?.split(":")[0];
+
+  if (localhost) {
+    return `http://${localhost}:4000/api`;
+  }
+
+  // Fallback for Android Emulator (10.0.2.2) or iOS Simulator (localhost)
+  if (Platform.OS === "android") {
+    return "http://10.0.2.2:4000/api";
+  }
+  return "http://localhost:4000/api";
+}
+
+export const API_URL = getLocalUrl();
 const API_BASE = API_URL;
 
 export type ApiError = { error: string; code?: string };
@@ -29,8 +50,11 @@ export async function api<T>(
   };
   if (skipAuth !== true) {
     const token = await getToken();
-    if (token) (headers as Record<string, string>)["Authorization"] = `Bearer ${token}`;
+    if (token) (headers as Record<string, string>)["Authorization"] = `Bearer ${token}`; // Authorization: Bearer <token>
   }
+
+  // console.log(`[API] ${init.method || 'GET'} ${url}`);
+
   const res = await fetch(url, { ...init, headers });
   const data = (await res.json().catch(() => ({}))) as T | ApiError;
   if (!res.ok) {

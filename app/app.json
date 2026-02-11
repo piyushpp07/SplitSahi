@@ -1,11 +1,11 @@
 {
   "expo": {
     "name": "SplitItUp",
-    "slug": "splitsahi",
+    "slug": "splititup",
     "version": "1.0.0",
     "orientation": "portrait",
     "userInterfaceStyle": "dark",
-    "scheme": "splitsahi",
+    "scheme": "splititup",
     "splash": {
       "image": "./assets/images/splash.png",
       "resizeMode": "contain",
@@ -13,7 +13,7 @@
     },
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.splitsahi.app",
+      "bundleIdentifier": "com.splititup.app",
       "infoPlist": {
         "LSApplicationQueriesSchemes": [
           "upi",
@@ -30,7 +30,7 @@
         "foregroundImage": "./assets/images/adaptive-icon.png",
         "backgroundColor": "#020617"
       },
-      "package": "com.piyushparadkar.splitsahise",
+      "package": "com.piyushparadkar.splititup",
       "versionCode": 1,
       "intentFilters": [
         {

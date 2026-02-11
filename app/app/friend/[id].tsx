@@ -48,7 +48,7 @@ export default function FriendDetailScreen() {
     if (!data?.friend.upiId || !data.balance || data.balance >= 0) return;
     
     const amount = Math.abs(data.balance);
-    const upiUrl = `upi://pay?pa=${encodeURIComponent(data.friend.upiId)}&pn=${encodeURIComponent(data.friend.name)}&am=${amount}&cu=INR&tn=SplitSahiSe%20Settlement`;
+    const upiUrl = `upi://pay?pa=${encodeURIComponent(data.friend.upiId)}&pn=${encodeURIComponent(data.friend.name)}&am=${amount}&cu=INR&tn=SplitItUp%20Settlement`;
     
     try {
       await Linking.openURL(upiUrl);

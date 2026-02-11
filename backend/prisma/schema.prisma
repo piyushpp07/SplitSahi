@@ -1,4 +1,4 @@
-// SplitSahiSe - Prisma Schema
+// SplitItUp - Prisma Schema
 // PostgreSQL with strict FK relationships for expense splitting app
 
 generator client {
@@ -15,7 +15,8 @@ datasource db {
 
 model User {
   id            String    @id @default(cuid())
-  email         String    @unique
+  username      String?   @unique
+  email         String?   @unique
   emailVerified Boolean   @default(false)
   name          String
   phone         String?   @unique
@@ -43,6 +44,9 @@ model User {
   settlementsFrom   Settlement[]    @relation("SettlementFrom")
   settlementsTo     Settlement[]    @relation("SettlementTo")
   recurringExpenses RecurringExpense[]
+  notifications     Notification[]
+  activities        Activity[]
+  pushTokens        PushToken[]
   
   @@index([email])
   @@index([phone])
@@ -90,6 +94,7 @@ model Group {
   expenses Expense[]
   settlements Settlement[]
   recurringExpenses RecurringExpense[]
+  activities Activity[]
 }
 
 enum GroupMemberRole {
@@ -277,6 +282,63 @@ model OTPVerification {
   @@index([identifier, type])
   @@index([expiresAt])
 }
+
+// ============== ACTIVITY & NOTIFICATIONS ==============
+
+enum ActivityType {
+  EXPENSE_ADDED
+  EXPENSE_UPDATED
+  EXPENSE_DELETED
+  SETTLEMENT_MADE
+  SETTLEMENT_COMPLETED
+  GROUP_CREATED
+  FRIEND_ADDED
+}
+
+model Activity {
+  id        String       @id @default(cuid())
+  userId    String       // Who performed the action
+  type      ActivityType
+  targetId  String?      // ID of expense, group, etc.
+  groupId   String?      // Contextual group
+  data      Json?        // Extra details (e.g. {amount: 100, title: 'Pizza'})
+  createdAt DateTime     @default(now())
+
+  user      User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  group     Group?       @relation(fields: [groupId], references: [id], onDelete: SetNull)
+
+  @@index([userId])
+  @@index([groupId])
+  @@index([createdAt])
+}
+
+model Notification {
+  id         String   @id @default(cuid())
+  userId     String   // Recipient
+  title      String
+  body       String
+  activityId String?
+  isRead     Boolean  @default(false)
+  createdAt  DateTime @default(now())
+
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([createdAt])
+}
+
+model PushToken {
+  id        String   @id @default(cuid())
+  userId    String
+  token     String   @unique // Expo Push Token
+  device    String?  // Optional: 'ios', 'android'
+  createdAt DateTime @default(now())
+
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
 
 // ============== CURRENCY EXCHANGE RATES ==============
 

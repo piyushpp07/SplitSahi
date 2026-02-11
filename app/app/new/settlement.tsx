@@ -15,6 +15,7 @@ import { View as RNView } from "react-native";
 interface Friend {
   id: string;
   name: string;
+  upiId?: string;
 }
 
 export default function AddSettlementScreen() {
@@ -285,7 +286,7 @@ export default function AddSettlementScreen() {
               <TouchableOpacity 
                 onPress={() => {
                   const recipient = friends?.find(f => f.id === toUserId);
-                  const msg = `Hi ${recipient?.name}, just a reminder for the payment of ₹${amount} on SplitSahi${notes ? ': ' + notes : ''}. You can pay directly via UPI: upi://pay?pa=${currentUser?.upiId || ''}&am=${amount}`;
+                  const msg = `Hi ${recipient?.name}, just a reminder for the payment of ₹${amount} on SplitItUp${notes ? ': ' + notes : ''}. You can pay directly via UPI: upi://pay?pa=${currentUser?.upiId || ''}&am=${amount}`;
                   Linking.openURL(`whatsapp://send?text=${encodeURIComponent(msg)}`);
                 }}
                 style={{ 
@@ -297,6 +298,38 @@ export default function AddSettlementScreen() {
                 <Text style={{ color: '#fff', fontWeight: 'bold', fontSize: 14 }}>Send WhatsApp Reminder</Text>
               </TouchableOpacity>
             </View>
+          )}
+
+          {/* Pay via UPI Button */}
+          {toUserId && direction === "YOU_PAID" && amount && parseFloat(amount) > 0 && friends?.find(f => f.id === toUserId)?.upiId && (
+             <TouchableOpacity
+               onPress={() => {
+                 const recipient = friends?.find(f => f.id === toUserId);
+                 if (recipient?.upiId) {
+                   const url = `upi://pay?pa=${recipient.upiId}&pn=${encodeURIComponent(recipient.name)}&am=${parseFloat(amount).toFixed(2)}&cu=INR&tn=${encodeURIComponent(notes || "Payment via SplitItUp")}`;
+                   Linking.openURL(url).catch(() => {
+                     Alert.alert("Error", "Could not open UPI app. Please ensure you have a UPI app installed.");
+                   });
+                 }
+               }}
+               style={{ 
+                 height: 56, 
+                 borderRadius: 12, 
+                 alignItems: 'center', 
+                 justifyContent: 'center', 
+                 marginBottom: 16,
+                 backgroundColor: '#2b2b2b',
+                 borderWidth: 1,
+                 borderColor: colors.border,
+                 flexDirection: 'row',
+                 gap: 8
+               }}
+             >
+               <Ionicons name="flash" size={20} color="#fff" />
+               <Text style={{ color: '#fff', fontWeight: 'bold', fontSize: 16 }}>
+                 Pay via UPI App
+               </Text>
+             </TouchableOpacity>
           )}
 
           <TouchableOpacity

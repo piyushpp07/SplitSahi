@@ -21,7 +21,7 @@ const SLIDES = [
   {
     id: '1',
     title: 'Split Expenses\nEffortlessly',
-    description: 'Track shared expenses with friends and family. No more awkward math.',
+    description: 'Track shared expenses with friends and family on SplitItUp. No more awkward math.',
     image: require('../assets/images/icon.png'),
     color: ['#4c669f', '#3b5998', '#192f6a'],
     icon: 'people-outline'
@@ -37,7 +37,7 @@ const SLIDES = [
   {
     id: '3',
     title: 'Settle Up\nInstantly',
-    description: 'Integrated with UPI for seamless payments. Settle debts in seconds.',
+    description: 'Integrated with UPI for seamless payments on SplitItUp. Settle debts in seconds.',
     image: require('../assets/images/icon.png'),
     color: ['#00b09b', '#96c93d'],
     icon: 'wallet-outline'

@@ -20,7 +20,7 @@ settlementsRouter.post(
     try {
       const err = validationResult(req);
       if (!err.isEmpty()) throw new AppError(400, err.array()[0].msg, "VALIDATION_ERROR");
-      
+
       const currentUserId = (req as AuthRequest & { userEntity: { id: string } }).userEntity.id;
       let { toUserId, fromUserId, amount, groupId, paymentMethod = "CASH", notes } = req.body;
 
@@ -53,6 +53,29 @@ settlementsRouter.post(
       });
 
       res.status(201).json(settlement);
+
+      // Async: Log activity & Notify
+      (async () => {
+        try {
+          const { logActivity, sendNotification, ActivityType } = await import("../services/activity.js");
+          const activity = await logActivity({
+            userId: currentUserId,
+            type: ActivityType.SETTLEMENT_MADE,
+            targetId: settlement.id,
+            groupId: groupId || undefined,
+            data: { amount, toUserId },
+          });
+
+          await sendNotification(
+            toUserId,
+            "Payment Received",
+            `${settlement.fromUser.name} settled ₹${amount} with you`,
+            activity?.id
+          );
+        } catch (err) {
+          console.error("[Activity/Notify] Background error:", err);
+        }
+      })();
     } catch (e) {
       next(e);
     }
@@ -63,7 +86,7 @@ settlementsRouter.post(
 settlementsRouter.get("/balances", async (req: AuthRequest, res, next) => {
   try {
     const userId = (req as AuthRequest & { userEntity: { id: string } }).userEntity.id;
-    
+
     // 1. Get all expenses where I am a payer or participant
     const expenses = await prisma.expense.findMany({
       where: {
@@ -96,19 +119,19 @@ settlementsRouter.get("/balances", async (req: AuthRequest, res, next) => {
       const myPaid = exp.payers.find(p => p.userId === userId)?.amountPaid || 0;
       // Amount I owe
       const myOwe = exp.splits.find(s => s.userId === userId)?.amountOwed || 0;
-      
+
       // For each other person in this expense, their share vs what they paid
       // This is complex for multi-payer. Simpler: map net balances per expense.
       // Net balance for Me = (Total I Paid) - (Total I Owe).
       // But we need per-person.
-      
+
       // Simple logic: If I paid for someone, they owe me. If they paid for me, I owe them.
       // In a 2-person expense: Me paid 100, split 50/50. Friend owes me 50.
     }
 
     // Actually, a simpler way to calculate balances is needed.
     // Let's use a simpler approach for now: Get total owed to me and total I owe.
-    
+
     res.json({ message: "Balances calculation in progress" });
   } catch (e) {
     next(e);

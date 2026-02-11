@@ -18,12 +18,12 @@ friendshipsRouter.get("/", async (req: AuthRequest, res, next) => {
         status: "ACCEPTED",
       },
       include: {
-        requester: { select: { id: true, name: true, email: true, avatarUrl: true } },
-        receiver: { select: { id: true, name: true, email: true, avatarUrl: true } },
+        requester: { select: { id: true, name: true, email: true, avatarUrl: true, upiId: true, emoji: true } as any },
+        receiver: { select: { id: true, name: true, email: true, avatarUrl: true, upiId: true, emoji: true } as any },
       },
     });
 
-    const simpleFriends = friends.map((f) => 
+    const simpleFriends = friends.map((f) =>
       f.requesterId === userId ? f.receiver : f.requester
     );
 

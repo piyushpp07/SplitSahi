@@ -221,7 +221,7 @@ export default function FriendsScreen() {
             <View style={{ flexDirection: 'row', gap: 12 }}>
                 <TouchableOpacity 
                 onPress={() => {
-                    const message = "Hey, let's split expenses easily on SplitSahi! Download now: https://splitsahi.se/download";
+                    const message = "Hey, let's split expenses easily on SplitItUp! Download now: https://splititup.app/download";
                     require("react-native").Share.share({ message });
                 }}
                 style={[styles.backBtn, { borderColor: colors.primary + '40' }]}

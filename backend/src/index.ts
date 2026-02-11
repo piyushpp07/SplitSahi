@@ -38,7 +38,7 @@ app.use("/api/analytics", analyticsRouter);
 app.use("/api/currency", currencyRouter);
 app.use("/api/otp", otpRouter);
 
-app.get("/health", (_req, res) => res.json({ ok: true, service: "splitsahise-api" }));
+app.get("/health", (_req, res) => res.json({ ok: true, service: "splititup-api" }));
 
 app.use(errorHandler);
 
@@ -48,5 +48,5 @@ initScheduler();
 initCurrencyService();
 
 app.listen(PORT, () => {
-  console.log(`SplitSahiSe API running at http://localhost:${PORT}`);
+  console.log(`SplitItUp API running at http://localhost:${PORT}`);
 });

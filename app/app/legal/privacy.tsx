@@ -20,7 +20,7 @@ export default function PrivacyPolicy() {
           Last Updated: February 9, 2026
         </Text>
         <Text style={{ color: colors.text, fontSize: 14, lineHeight: 22 }}>
-          Your privacy is important to us. It is SplitSahi's policy to respect your privacy regarding any information we may collect from you through our app.
+          Your privacy is important to us. It is SplitItUp's policy to respect your privacy regarding any information we may collect from you through our app.
           {"\n\n"}
           <Text style={{ fontWeight: 'bold' }}>1. Information we collect</Text>
           {"\n"}

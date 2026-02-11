@@ -27,8 +27,8 @@ export default function ShareInvite({
   const [modalVisible, setModalVisible] = useState(false);
 
   // Generate invite link
-  const inviteLink = `splitsahise://group/join/${groupId}`;
-  const inviteMessage = `Join "${groupName}" on SplitSahiSe!\n\n${
+  const inviteLink = `splititup://group/join/${groupId}`;
+  const inviteMessage = `Join "${groupName}" on SplitItUp!\n\n${
     inviteCode ? `Invite Code: ${inviteCode}\n` : ""
   }${inviteLink}`;
 

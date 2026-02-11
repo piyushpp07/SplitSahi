@@ -13,7 +13,7 @@ usersRouter.get("/me", async (req: AuthRequest, res, next) => {
     const user = (req as AuthRequest & { userEntity: { id: string } }).userEntity;
     const u = await prisma.user.findUnique({
       where: { id: user.id },
-      select: { id: true, email: true, name: true, phone: true, upiId: true, avatarUrl: true, emoji: true, currency: true, createdAt: true },
+      select: { id: true, email: true, name: true, phone: true, username: true, upiId: true, avatarUrl: true, emoji: true, currency: true, createdAt: true },
     });
     if (!u) throw new AppError(404, "User not found", "NOT_FOUND");
     res.json(u);
@@ -42,7 +42,7 @@ usersRouter.patch(
       const updated = await prisma.user.update({
         where: { id: user.id },
         data: { name, phone, upiId, avatarUrl, emoji },
-        select: { id: true, email: true, name: true, phone: true, upiId: true, avatarUrl: true, emoji: true, currency: true },
+        select: { id: true, email: true, name: true, phone: true, username: true, upiId: true, avatarUrl: true, emoji: true, currency: true },
       });
       res.json(updated);
     } catch (e) {
@@ -63,13 +63,14 @@ usersRouter.get("/search", async (req: AuthRequest, res, next) => {
       where: {
         id: { not: currentUserId },
         OR: [
+          { username: { contains: q, mode: "insensitive" } },
           { email: { contains: q, mode: "insensitive" } },
           { phone: { contains: q } },
           { name: { contains: q, mode: "insensitive" } },
         ],
       },
       take: 20,
-      select: { id: true, name: true, email: true, phone: true, avatarUrl: true, emoji: true },
+      select: { id: true, name: true, email: true, phone: true, username: true, avatarUrl: true, emoji: true },
     });
     res.json(users);
   } catch (e) {
@@ -86,3 +87,29 @@ usersRouter.get("/categories", async (_req, res, next) => {
     next(e);
   }
 });
+
+// Register push token
+usersRouter.post(
+  "/push-token",
+  body("token").trim().notEmpty().withMessage("Token is required"),
+  body("device").optional().trim(),
+  async (req: AuthRequest, res, next) => {
+    try {
+      const err = validationResult(req);
+      if (!err.isEmpty()) throw new AppError(400, err.array()[0].msg, "VALIDATION_ERROR");
+
+      const userId = (req as AuthRequest & { userEntity: { id: string } }).userEntity.id;
+      const { token, device } = req.body;
+
+      const pushToken = await prisma.pushToken.upsert({
+        where: { token },
+        update: { userId, device },
+        create: { userId, token, device },
+      });
+
+      res.json({ success: true, pushToken });
+    } catch (e) {
+      next(e);
+    }
+  }
+);

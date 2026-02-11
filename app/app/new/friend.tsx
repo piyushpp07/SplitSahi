@@ -46,7 +46,7 @@ export default function AddFriendScreen() {
   }
 
   async function shareAppInvite() {
-    const message = "Hey, let's split expenses easily on SplitSahi! Download now: https://splitsahi.se/download";
+    const message = "Hey, let's split expenses easily on SplitItUp! Download now: https://splititup.app/download";
     try {
       await Share.share({
         message,
@@ -67,7 +67,6 @@ export default function AddFriendScreen() {
       const users = await apiGet<User[]>(`/users/search?q=${encodeURIComponent(text)}`);
       setResults(users);
     } catch (e) {
-      console.log(e);
       setResults([]);
     } finally {
       setLoading(false);
@@ -215,7 +214,7 @@ export default function AddFriendScreen() {
           ListEmptyComponent={
             !loading && query.length >= 2 ? (
               <View style={{ alignItems: 'center', marginTop: 40 }}>
-                <Text style={{ color: colors.textSecondary, fontWeight: 'bold' }}>No users found on SplitSahi</Text>
+                <Text style={{ color: colors.textSecondary, fontWeight: 'bold' }}>No users found on SplitItUp</Text>
                 <TouchableOpacity 
                    onPress={shareAppInvite}
                    style={{ marginTop: 12, backgroundColor: colors.primary + '20', paddingHorizontal: 16, paddingVertical: 8, borderRadius: 20 }}
