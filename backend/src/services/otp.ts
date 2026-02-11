@@ -10,14 +10,20 @@ const OTP_EXPIRY_MINUTES = 10;
 const transporter = nodemailer.createTransport({
   host: process.env.SMTP_HOST || "smtp.gmail.com",
   port: parseInt(process.env.SMTP_PORT || "465"),
-  secure: process.env.SMTP_SECURE !== "false", // Default to true (465) unless explicitly "false"
+  secure: process.env.SMTP_SECURE !== "false", // Default to true (465)
   auth: {
     user: process.env.SMTP_USER,
     pass: process.env.SMTP_PASS,
   },
   tls: {
-    rejectUnauthorized: false // Helps with some cloud-provider handshake issues
-  }
+    rejectUnauthorized: false
+  },
+  connectionTimeout: 10000, // 10 seconds timeout
+  greetingTimeout: 10000,
+  socketTimeout: 10000,
+  // Force IPv4 because Render/some environments have issues with IPv6 ENETUNREACH
+  // @ts-ignore - family is a valid option in newer nodemailer/net
+  family: 4
 });
 
 // Verify connection configuration
