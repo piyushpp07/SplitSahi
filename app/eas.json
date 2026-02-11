@@ -12,7 +12,7 @@
                 "buildType": "apk"
             },
             "env": {
-                "EXPO_PUBLIC_API_URL": "https://splititup.onrender.com/api"
+                "EXPO_PUBLIC_API_URL": "https://splitsahi.onrender.com/api"
             }
         },
         "production": {
@@ -20,7 +20,7 @@
                 "buildType": "app-bundle"
             },
             "env": {
-                "EXPO_PUBLIC_API_URL": "https://splititup.onrender.com/api"
+                "EXPO_PUBLIC_API_URL": "https://splitsahi.onrender.com/api"
             }
         }
     },
