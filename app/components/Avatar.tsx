@@ -3,6 +3,8 @@ import { View, Text, StyleSheet, Image } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { GRADIENT_AVATARS } from '@/constants/Avatars';
 
+import { useTheme } from '@/contexts/ThemeContext';
+
 interface AvatarProps {
   url: string | null | undefined;
   name: string;
@@ -11,6 +13,8 @@ interface AvatarProps {
 }
 
 export default function Avatar({ url, name, size = 48, style }: AvatarProps) {
+  const { colors } = useTheme();
+
   if (url?.startsWith('gradient:')) {
     const id = url.split(':')[1];
     const avatar = GRADIENT_AVATARS.find(a => a.id === id) || GRADIENT_AVATARS[0];
@@ -37,8 +41,15 @@ export default function Avatar({ url, name, size = 48, style }: AvatarProps) {
   }
 
   return (
-    <View style={[styles.container, { width: size, height: size, borderRadius: size * 0.4, backgroundColor: '#f1f5f9' }, style]}>
-      <Text style={[styles.initial, { fontSize: size * 0.4 }]}>{name.charAt(0).toUpperCase()}</Text>
+    <View style={[styles.container, { 
+      width: size, 
+      height: size, 
+      borderRadius: size * 0.4, 
+      backgroundColor: colors.surface,
+      borderWidth: 1,
+      borderColor: colors.border
+    }, style]}>
+      <Text style={[styles.initial, { fontSize: size * 0.4, color: colors.textSecondary }]}>{name.charAt(0).toUpperCase()}</Text>
     </View>
   );
 }

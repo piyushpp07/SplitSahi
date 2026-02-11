@@ -8,6 +8,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { useTheme } from "@/contexts/ThemeContext";
 import { Input } from "@/components/ui/Input";
 import { Button } from "@/components/ui/Button";
+import { Typography } from "@/components/ui/Typography";
 import Animated, { FadeInDown, FadeInUp } from "react-native-reanimated";
 
 export default function LoginScreen() {
@@ -56,8 +57,8 @@ export default function LoginScreen() {
             entering={FadeInUp.delay(200).duration(800)}
             style={{ marginBottom: 32, alignItems: 'center' }}
           >
-            <Text style={{ fontSize: 32, fontWeight: 'bold', color: colors.text, marginBottom: 4, letterSpacing: -1 }}>Welcome Back</Text>
-            <Text style={{ color: colors.textSecondary, fontWeight: 'bold', textTransform: 'uppercase', letterSpacing: 2, fontSize: 10 }}>Sign in to continue</Text>
+            <Typography variant="h1" align="center" style={{ marginBottom: 4 }}>Welcome Back</Typography>
+            <Typography variant="label" color="muted" align="center">Sign in to continue</Typography>
           </Animated.View>
 
           <Animated.View 
@@ -85,7 +86,7 @@ export default function LoginScreen() {
             <View style={{ alignItems: 'flex-end' }}>
               <Link href="/(auth)/forgot-password" asChild>
                 <TouchableOpacity>
-                  <Text style={{ color: colors.primary, fontSize: 12, fontWeight: 'bold' }}>Forgot Password?</Text>
+                  <Typography variant="body2" color="primary" weight="bold">Forgot Password?</Typography>
                 </TouchableOpacity>
               </Link>
             </View>
@@ -101,10 +102,10 @@ export default function LoginScreen() {
           </Animated.View>
 
           <View style={{ flexDirection: 'row', justifyContent: 'center', alignItems: 'center', paddingBottom: 32 }}>
-            <Text style={{ color: colors.textSecondary, fontWeight: 'bold', fontSize: 10, textTransform: 'uppercase', letterSpacing: 1 }}>New here? </Text>
+            <Typography variant="label" color="muted">New here? </Typography>
             <Link href="/(auth)/register" asChild>
               <TouchableOpacity>
-                <Text style={{ color: colors.primary, fontWeight: 'bold', fontSize: 10, textTransform: 'uppercase', letterSpacing: 1 }}>Create Account</Text>
+                <Typography variant="label" color="primary">Create Account</Typography>
               </TouchableOpacity>
             </Link>
           </View>

@@ -9,6 +9,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { useTheme } from "@/contexts/ThemeContext";
 import { Input } from "@/components/ui/Input";
 import { Button } from "@/components/ui/Button";
+import { Typography } from "@/components/ui/Typography";
 import EmojiPicker from "@/components/EmojiPicker";
 
 export default function RegisterScreen() {
@@ -26,18 +27,29 @@ export default function RegisterScreen() {
   const [loading, setLoading] = useState(false);
   const setAuth = useAuthStore((s) => s.setAuth);
 
+  // Debounce username check
+  useEffect(() => {
+    const delayDebounceFn = setTimeout(() => {
+      if (username.length >= 3) {
+        handleCheckUsername(username);
+      } else {
+        setIsUsernameValid(null);
+      }
+    }, 500);
+
+    return () => clearTimeout(delayDebounceFn);
+  }, [username]);
+
   async function handleCheckUsername(val: string) {
-    if (val.length < 3) {
-      setIsUsernameValid(null);
-      return;
-    }
+    if (val.length < 3) return;
+    
     setUsernameLoading(true);
     try {
-      const sanitized = val.toLowerCase().replace(/[^a-z0-9_]/g, '');
-      const res = await apiGet<{ available: boolean }>(`/auth/check-username?username=${sanitized}`, { skipAuth: true });
+      const res = await apiGet<{ available: boolean }>(`/auth/check-username?username=${val}`, { skipAuth: true });
       setIsUsernameValid(res.available);
     } catch (e) {
-      setIsUsernameValid(false);
+      console.error("Username check error:", e);
+      setIsUsernameValid(null); // Silent failure
     } finally {
       setUsernameLoading(false);
     }
@@ -110,8 +122,8 @@ export default function RegisterScreen() {
             entering={FadeInUp.delay(200).duration(800)}
             style={{ marginBottom: 32, alignItems: 'center' }}
           >
-            <Text style={{ fontSize: 32, fontWeight: 'bold', color: colors.text, marginBottom: 4, letterSpacing: -1 }}>Create Account</Text>
-            <Text style={{ color: colors.textSecondary, fontWeight: 'bold', textTransform: 'uppercase', letterSpacing: 2, fontSize: 10 }}>Join SplitItUp today</Text>
+            <Typography variant="h1" align="center" style={{ marginBottom: 4 }}>Create Account</Typography>
+            <Typography variant="label" color="muted" align="center">Join SplitItUp today</Typography>
           </Animated.View>
 
           <Animated.View 
@@ -150,7 +162,7 @@ export default function RegisterScreen() {
                   <Ionicons name="camera" size={12} color="#fff" />
                 </View>
               </TouchableOpacity>
-              <Text style={{ color: colors.textSecondary, fontSize: 10, marginTop: 8, fontWeight: 'bold', textTransform: 'uppercase' }}>Pick your avatar</Text>
+              <Typography variant="label" color="muted" align="center" style={{ marginTop: 8 }}>Pick your avatar</Typography>
             </View>
 
             {/* Name */}
@@ -169,7 +181,6 @@ export default function RegisterScreen() {
               onChangeText={(val) => {
                 const sanitized = val.toLowerCase().replace(/[^a-z0-9_]/g, '');
                 setUsername(sanitized);
-                handleCheckUsername(sanitized);
               }}
               autoCapitalize="none"
               error={isUsernameValid === false}

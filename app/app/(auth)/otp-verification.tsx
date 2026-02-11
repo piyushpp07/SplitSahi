@@ -8,6 +8,7 @@ import { useTheme } from "@/contexts/ThemeContext";
 import Animated, { FadeInDown, FadeInUp } from "react-native-reanimated";
 import { useAuthStore } from "@/store/authStore";
 import { Button } from "@/components/ui/Button";
+import { Typography } from "@/components/ui/Typography";
 export default function OTPVerificationScreen() {
   const { colors } = useTheme();
   const { email } = useLocalSearchParams<{ email: string }>();
@@ -100,11 +101,11 @@ export default function OTPVerificationScreen() {
             }}>
               <Ionicons name="shield-checkmark" size={40} color={colors.primary} />
             </View>
-            <Text style={{ fontSize: 28, fontWeight: 'bold', color: colors.text, marginBottom: 8 }}>Verify Identity</Text>
-            <Text style={{ color: colors.textSecondary, textAlign: 'center', fontSize: 16 }}>
+            <Typography variant="h2" align="center" style={{ marginBottom: 8 }}>Verify Identity</Typography>
+            <Typography variant="body1" color="muted" align="center">
               We've sent a 6-digit code to{"\n"}
-              <Text style={{ color: colors.text, fontWeight: 'bold' }}>{email}</Text>
-            </Text>
+              <Typography weight="bold">{email}</Typography>
+            </Typography>
           </Animated.View>
 
           <Animated.View entering={FadeInDown.delay(400).duration(800)} style={{ flexDirection: 'row', justifyContent: 'center', gap: 8, marginBottom: 40 }}>
@@ -146,9 +147,12 @@ export default function OTPVerificationScreen() {
               disabled={timer > 0}
               style={{ alignItems: 'center' }}
             >
-              <Text style={{ color: timer > 0 ? colors.textMuted : colors.primary, fontWeight: 'bold' }}>
+              <Typography 
+                color={timer > 0 ? "muted" : "primary"} 
+                weight="bold"
+              >
                 {timer > 0 ? `Resend code in ${timer}s` : "Resend Code"}
-              </Text>
+              </Typography>
             </TouchableOpacity>
           </Animated.View>
         </View>

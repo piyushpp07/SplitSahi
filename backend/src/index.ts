@@ -47,6 +47,7 @@ app.use(errorHandler);
 initScheduler();
 initCurrencyService();
 
-app.listen(PORT, () => {
-  console.log(`SplitItUp API running at http://localhost:${PORT}`);
+const HOST = '0.0.0.0';
+app.listen(Number(PORT), HOST, () => {
+  console.log(`SplitItUp API running at http://${HOST}:${PORT}`);
 });

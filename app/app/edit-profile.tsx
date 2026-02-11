@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { View, Text, TextInput, TouchableOpacity, Alert, ScrollView, Platform, KeyboardAvoidingView } from "react-native";
+import { View, Alert, ScrollView, Platform, KeyboardAvoidingView, TouchableOpacity } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { apiPatch } from "@/lib/api";
 import { router } from "expo-router";
@@ -8,11 +8,15 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { useTheme } from "@/contexts/ThemeContext";
 import * as Linking from "expo-linking";
 import EmojiPicker from "@/components/EmojiPicker";
+import { Input } from "@/components/ui/Input";
+import { Button } from "@/components/ui/Button";
+import { Typography } from "@/components/ui/Typography";
 
 export default function EditProfileScreen() {
   const { colors } = useTheme();
   const { user, setUser } = useAuthStore();
   const [name, setName] = useState(user?.name || "");
+  const [username, setUsername] = useState(user?.username || "");
   const [upiId, setUpiId] = useState(user?.upiId || "");
   const [phone, setPhone] = useState(user?.phone || "");
   const [email, setEmail] = useState(user?.email || "");
@@ -29,7 +33,7 @@ export default function EditProfileScreen() {
 
     Alert.alert(
       "Verify UPI ID",
-      "We will open your UPI app to verify this ID. You will see a ₹1.00 request (you don't need to complete the payment, just check if the name matches).",
+      "We will open your UPI app to verify this ID.",
       [
         { text: "Cancel", style: "cancel" },
         { 
@@ -42,14 +46,10 @@ export default function EditProfileScreen() {
                 await Linking.openURL(upiUrl);
                 setIsUpiVerified(true);
               } else {
-                Alert.alert(
-                  "No UPI App", 
-                  "We couldn't find a UPI app (GPay/PhonePe) on this device. If you are sure this ID is correct, you can verify manually.",
-                  [
-                    { text: "Try Again", style: "default" },
-                    { text: "Manual Verify", style: "destructive", onPress: () => setIsUpiVerified(true) }
-                  ]
-                );
+                Alert.alert("Manual Verify", "No UPI app found. Verify manually?", [
+                  { text: "Cancel", style: "cancel" },
+                  { text: "Yes", onPress: () => setIsUpiVerified(true) }
+                ]);
               }
             } catch (e) {
               setIsUpiVerified(true);
@@ -61,33 +61,11 @@ export default function EditProfileScreen() {
   }
 
   async function handleUpdate() {
-    // Only validate name is required
     if (!name.trim()) {
       Alert.alert("Required", "Please enter your name");
       return;
     }
     
-    // Validate UPI format only if provided
-    if (upiId.trim() && !/^[a-zA-Z0-9.\-_]{2,256}@[a-zA-Z]{2,64}$/.test(upiId.trim())) {
-      Alert.alert("Invalid UPI ID", "Please enter a valid UPI ID (e.g. user@bank)");
-      return;
-    }
-
-    // Verify UPI only if provided and changed
-    if (upiId.trim() && upiId.trim() !== user?.upiId && !isUpiVerified) {
-       Alert.alert("Verify VPA", "Please click the 'Verify' button to ensure your UPI ID is correct and active.");
-       return;
-    }
-    
-    // Validate phone format only if provided and changed
-    if (phone.trim() && phone.trim() !== user?.phone) {
-      const digitsOnly = phone.trim().replace(/\D/g, '');
-      if (digitsOnly.length < 10) {
-        Alert.alert("Invalid Phone", "Please enter a valid mobile number");
-        return;
-      }
-    }
-
     setLoading(true);
     try {
       const updated = await apiPatch<any>("/users/me", {
@@ -111,181 +89,121 @@ export default function EditProfileScreen() {
     <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }} edges={['top']}>
       <KeyboardAvoidingView 
         behavior={Platform.OS === "ios" ? "padding" : "height"}
-        style={{ flex: 1, paddingHorizontal: 20 }}
+        style={{ flex: 1 }}
       >
-        <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 24, marginTop: 16 }}>
+        <View style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: 20, marginBottom: 24, marginTop: 16 }}>
           <TouchableOpacity 
             onPress={() => router.back()} 
             style={{ 
-              height: 40, width: 40, borderRadius: 12, 
+              height: 44, width: 44, borderRadius: 14, 
               backgroundColor: colors.surface, 
               alignItems: 'center', justifyContent: 'center', 
-              marginRight: 16,
-              borderWidth: 1,
-              borderColor: colors.border
+              marginRight: 16, borderWidth: 1, borderColor: colors.border
             }}
           >
-            <Ionicons name="arrow-back" size={20} color={colors.textSecondary} />
+            <Ionicons name="arrow-back" size={24} color={colors.text} />
           </TouchableOpacity>
-          <Text style={{ fontSize: 20, fontWeight: 'bold', color: colors.text }}>Edit Profile</Text>
+          <Typography variant="h2">Edit Profile</Typography>
         </View>
 
-        <ScrollView showsVerticalScrollIndicator={false}>
-          {/* Emoji Selection */}
+        <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 20 }}>
           <View style={{ marginBottom: 32, alignItems: 'center' }}>
             <TouchableOpacity
               onPress={() => setShowEmojiPicker(true)}
               style={{
-                height: 100,
-                width: 100,
-                borderRadius: 50,
+                height: 120, width: 120, borderRadius: 60,
                 backgroundColor: colors.surface,
-                alignItems: 'center',
-                justifyContent: 'center',
-                borderWidth: 3,
-                borderColor: colors.primary,
-                marginBottom: 12,
+                alignItems: 'center', justifyContent: 'center',
+                borderWidth: 4, borderColor: colors.primary,
+                marginBottom: 16,
               }}
             >
-              <Text style={{ fontSize: 48 }}>{emoji || "😊"}</Text>
+              <Typography style={{ fontSize: 60 }}>{emoji || "😊"}</Typography>
             </TouchableOpacity>
             <TouchableOpacity onPress={() => setShowEmojiPicker(true)}>
-              <Text style={{ color: colors.primary, fontWeight: 'bold', fontSize: 14 }}>
-                {emoji ? "Change Emoji" : "Add Profile Emoji"}
-              </Text>
+              <Typography color="primary" weight="bold">Change Avatar Emoji</Typography>
             </TouchableOpacity>
-            {emoji && (
-              <TouchableOpacity
-                onPress={() => setEmoji("")}
-                style={{ marginTop: 4 }}
-              >
-                <Text style={{ color: colors.textTertiary, fontSize: 12 }}>Remove</Text>
-              </TouchableOpacity>
-            )}
           </View>
 
-          <View style={{ marginBottom: 24 }}>
-            <View style={{ marginBottom: 20 }}>
-              <Text style={{ color: colors.textSecondary, fontSize: 12, fontWeight: 'bold', marginBottom: 8 }}>Full Name</Text>
-              <TextInput
-                style={{ 
-                  backgroundColor: colors.surface, 
-                  borderRadius: 12, 
-                  padding: 16, 
-                  color: colors.text, 
-                  borderWidth: 1, 
-                  borderColor: colors.border 
-                }}
+          <View style={{ gap: 24, marginBottom: 40 }}>
+            <View>
+              <Typography variant="label" color="muted" style={{ marginBottom: 8, marginLeft: 4 }}>Full Name</Typography>
+              <Input
+                placeholder="Your Name"
                 value={name}
                 onChangeText={setName}
-                placeholder="e.g. John Doe"
-                placeholderTextColor={colors.textMuted}
+                icon="person-outline"
               />
             </View>
+
+            <View>
+              <Typography variant="label" color="muted" style={{ marginBottom: 8, marginLeft: 4 }}>Username</Typography>
+              <Input
+                placeholder="username"
+                value={username}
+                onChangeText={setUsername}
+                icon="at-outline"
+                autoCapitalize="none"
+                editable={false} // Match backend restriction for now
+                style={{ opacity: 0.7 }}
+              />
+              <Typography variant="caption" color="muted" style={{ marginTop: 4, marginLeft: 4 }}>Usernames cannot be changed yet</Typography>
+            </View>
             
-            <View style={{ marginBottom: 20 }}>
-              <Text style={{ color: colors.textSecondary, fontSize: 12, fontWeight: 'bold', marginBottom: 8 }}>UPI ID</Text>
-              <View style={{ flexDirection: 'row', gap: 10 }}>
-                <TextInput
-                  style={{ 
-                    flex: 1,
-                    backgroundColor: colors.surface, 
-                    borderRadius: 12, 
-                    padding: 16, 
-                    color: colors.text, 
-                    borderWidth: 1, 
-                    borderColor: colors.border 
-                  }}
-                  value={upiId}
-                  onChangeText={(txt) => {
-                    setUpiId(txt);
-                    setIsUpiVerified(false);
-                  }}
-                  placeholder="user@upi"
-                  placeholderTextColor={colors.textMuted}
-                  autoCapitalize="none"
-                />
-                <TouchableOpacity 
-                   onPress={handleVerify}
-                   style={{ 
-                     backgroundColor: isUpiVerified ? '#10b981' : colors.surfaceActive, 
-                     paddingHorizontal: 16, 
-                     borderRadius: 12, 
-                     alignItems: 'center', 
-                     justifyContent: 'center',
-                     borderWidth: 1,
-                     borderColor: isUpiVerified ? '#10b981' : colors.border
-                   }}
-                >
-                  <Ionicons 
-                    name={isUpiVerified ? "checkmark-circle" : "shield-checkmark-outline"} 
-                    size={20} 
-                    color={isUpiVerified ? "#fff" : colors.primary} 
-                  />
-                  {!isUpiVerified && <Text style={{ fontSize: 10, fontWeight: 'bold', color: colors.primary, marginTop: 2 }}>Verify</Text>}
-                </TouchableOpacity>
-              </View>
-              <Text style={{ color: colors.textTertiary, fontSize: 10, marginTop: 4, marginLeft: 4 }}>
-                {isUpiVerified ? "✓ Verified & Active" : "Used for receiving payments"}
-              </Text>
+            <View>
+              <Typography variant="label" color="muted" style={{ marginBottom: 8, marginLeft: 4 }}>UPI ID</Typography>
+              <Input
+                placeholder="user@upi"
+                value={upiId}
+                onChangeText={(txt) => { setUpiId(txt); setIsUpiVerified(false); }}
+                icon="card-outline"
+                autoCapitalize="none"
+                rightElement={
+                  <TouchableOpacity 
+                    onPress={handleVerify}
+                    style={{ 
+                      backgroundColor: isUpiVerified ? colors.success : colors.primary,
+                      paddingHorizontal: 12, paddingVertical: 6, borderRadius: 12
+                    }}
+                  >
+                    <Typography weight="bold" style={{ color: '#fff', fontSize: 10 }}>
+                      {isUpiVerified ? "Verified" : "Verify"}
+                    </Typography>
+                  </TouchableOpacity>
+                }
+              />
             </View>
 
-            <View style={{ marginBottom: 20 }}>
-              <Text style={{ color: colors.textSecondary, fontSize: 12, fontWeight: 'bold', marginBottom: 8 }}>Phone Number</Text>
-              <TextInput
-                style={{ 
-                  backgroundColor: colors.surface, 
-                  borderRadius: 12, 
-                  padding: 16, 
-                  color: colors.text, 
-                  borderWidth: 1, 
-                  borderColor: colors.border 
-                }}
+            <View>
+              <Typography variant="label" color="muted" style={{ marginBottom: 8, marginLeft: 4 }}>Phone Number</Typography>
+              <Input
+                placeholder="+91 98765 43210"
                 value={phone}
                 onChangeText={setPhone}
-                placeholder="+91 98765 43210"
-                placeholderTextColor={colors.textMuted}
+                icon="call-outline"
                 keyboardType="phone-pad"
               />
             </View>
 
-            <View style={{ marginBottom: 20 }}>
-              <Text style={{ color: colors.textSecondary, fontSize: 12, fontWeight: 'bold', marginBottom: 8 }}>Email Address</Text>
-              <TextInput
-                style={{ 
-                  backgroundColor: colors.surface, 
-                  borderRadius: 12, 
-                  padding: 16, 
-                  color: colors.text, 
-                  borderWidth: 1, 
-                  borderColor: colors.border 
-                }}
+            <View>
+              <Typography variant="label" color="muted" style={{ marginBottom: 8, marginLeft: 4 }}>Email Address</Typography>
+              <Input
+                placeholder="user@example.com"
                 value={email}
                 onChangeText={setEmail}
-                placeholder="user@example.com"
-                placeholderTextColor={colors.textMuted}
+                icon="mail-outline"
                 keyboardType="email-address"
                 autoCapitalize="none"
               />
             </View>
           </View>
 
-          <TouchableOpacity
-            style={{ 
-              height: 56, 
-              borderRadius: 12, 
-              alignItems: 'center', 
-              justifyContent: 'center', 
-              marginBottom: 40,
-              backgroundColor: loading ? colors.surfaceActive : colors.primary,
-            }}
+          <Button
+            title="Update Profile"
             onPress={handleUpdate}
-            disabled={loading}
-          >
-            <Text style={{ color: '#fff', fontWeight: 'bold', fontSize: 16 }}>
-              {loading ? "Saving..." : "Save Changes"}
-            </Text>
-          </TouchableOpacity>
+            loading={loading}
+            style={{ marginBottom: 40 }}
+          />
         </ScrollView>
       </KeyboardAvoidingView>
 
@@ -297,3 +215,4 @@ export default function EditProfileScreen() {
     </SafeAreaView>
   );
 }
+

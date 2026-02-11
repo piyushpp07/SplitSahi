@@ -1,12 +1,9 @@
-import React, { useRef, useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { 
   View, 
-  Text, 
-  StyleSheet, 
   Dimensions, 
   FlatList, 
   TouchableOpacity, 
-  Image, 
   StatusBar 
 } from 'react-native';
 import { useRouter } from 'expo-router';
@@ -14,56 +11,38 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { LinearGradient } from 'expo-linear-gradient';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
+import { useTheme } from '@/contexts/ThemeContext';
+import { Typography } from '@/components/ui/Typography';
+import { Button } from '@/components/ui/Button';
 
-const { width, height } = Dimensions.get('window');
+const { width } = Dimensions.get('window');
 
 const SLIDES = [
   {
     id: '1',
     title: 'Split Expenses\nEffortlessly',
-    description: 'Track shared expenses with friends and family on SplitItUp. No more awkward math.',
-    image: require('../assets/images/icon.png'),
-    color: ['#4c669f', '#3b5998', '#192f6a'],
-    icon: 'people-outline'
+    description: 'Track shared expenses with friends and family. No more awkward math or missing payments.',
+    icon: 'people-outline',
+    color: ['#6366f1', '#4338ca']
   },
   {
     id: '2',
     title: 'Fair & Transparent\nSplitting',
-    description: 'Split by percentage, shares, or exact amounts. Everyone pays their fair share.',
-    image: require('../assets/images/icon.png'),
-    color: ['#fe8c00', '#f83600'],
-    icon: 'pie-chart-outline'
+    description: 'Split by percentage, shares, or exact amounts. Everyone pays their fair share, always.',
+    icon: 'pie-chart-outline',
+    color: ['#ec4899', '#be185d']
   },
   {
     id: '3',
     title: 'Settle Up\nInstantly',
-    description: 'Integrated with UPI for seamless payments on SplitItUp. Settle debts in seconds.',
-    image: require('../assets/images/icon.png'),
-    color: ['#00b09b', '#96c93d'],
-    icon: 'wallet-outline'
+    description: 'Integrated with UPI for seamless payments. Settle debts in seconds with just a few taps.',
+    icon: 'wallet-outline',
+    color: ['#10b981', '#047857']
   }
 ];
 
-const Slide = ({ item }: { item: typeof SLIDES[0] }) => {
-  return (
-    <View style={styles.slide}>
-      <LinearGradient
-        colors={item.color as any}
-        style={styles.imageContainer}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 1 }}
-      >
-        <Ionicons name={item.icon as any} size={100} color="white" />
-      </LinearGradient>
-      <View style={styles.textContainer}>
-        <Text style={styles.title}>{item.title}</Text>
-        <Text style={styles.description}>{item.description}</Text>
-      </View>
-    </View>
-  );
-};
-
 export default function Onboarding() {
+  const { colors, isDark } = useTheme();
   const router = useRouter();
   const [currentIndex, setCurrentIndex] = useState(0);
   const flatListRef = useRef<FlatList>(null);
@@ -95,13 +74,38 @@ export default function Onboarding() {
   }).current;
 
   return (
-    <SafeAreaView style={styles.container}>
-      <StatusBar barStyle="dark-content" />
+    <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }}>
+      <StatusBar barStyle={isDark ? "light-content" : "dark-content"} />
       
       <FlatList
         ref={flatListRef}
         data={SLIDES}
-        renderItem={({ item }) => <Slide item={item} />}
+        renderItem={({ item }) => (
+          <View style={{ width, alignItems: 'center', padding: 40, justifyContent: 'center' }}>
+            <LinearGradient
+              colors={item.color as any}
+              style={{
+                width: width * 0.7,
+                height: width * 0.7,
+                borderRadius: 60,
+                justifyContent: 'center',
+                alignItems: 'center',
+                marginBottom: 60,
+                shadowColor: item.color[0],
+                shadowOffset: { width: 0, height: 20 },
+                shadowOpacity: 0.3,
+                shadowRadius: 30,
+                elevation: 10,
+              }}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+            >
+              <Ionicons name={item.icon as any} size={120} color="white" />
+            </LinearGradient>
+            <Typography variant="h1" align="center" style={{ marginBottom: 16 }}>{item.title}</Typography>
+            <Typography variant="body1" color="muted" align="center">{item.description}</Typography>
+          </View>
+        )}
         horizontal
         showsHorizontalScrollIndicator={false}
         pagingEnabled
@@ -109,39 +113,42 @@ export default function Onboarding() {
         keyExtractor={(item) => item.id}
         onViewableItemsChanged={onViewableItemsChanged}
         viewabilityConfig={{ viewAreaCoveragePercentThreshold: 50 }}
-        scrollEventThrottle={32}
       />
 
-      <View style={styles.footer}>
+      <View style={{ padding: 24, paddingBottom: 40 }}>
         {/* Pagination Dots */}
-        <View style={styles.pagination}>
+        <View style={{ flexDirection: 'row', justifyContent: 'center', gap: 8, marginBottom: 40 }}>
           {SLIDES.map((_, index) => (
             <View
               key={index}
-              style={[
-                styles.dot,
-                { width: currentIndex === index ? 20 : 10, backgroundColor: currentIndex === index ? '#4F46E5' : '#E5E7EB' }
-              ]}
+              style={{
+                height: 8,
+                width: currentIndex === index ? 24 : 8,
+                borderRadius: 4,
+                backgroundColor: currentIndex === index ? colors.primary : colors.border,
+              }}
             />
           ))}
         </View>
 
         {/* Buttons */}
-        <View style={styles.buttonContainer}>
+        <View style={{ gap: 16 }}>
           {currentIndex < SLIDES.length - 1 ? (
-            <View style={styles.navButtons}>
-              <TouchableOpacity onPress={finishOnboarding}>
-                <Text style={styles.skipText}>Skip</Text>
+            <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+              <TouchableOpacity onPress={finishOnboarding} style={{ padding: 12 }}>
+                <Typography color="muted" weight="bold">Skip</Typography>
               </TouchableOpacity>
-              <TouchableOpacity style={styles.nextButton} onPress={handleNext}>
-                <Text style={styles.nextButtonText}>Next</Text>
-                <Ionicons name="arrow-forward" size={20} color="white" />
-              </TouchableOpacity>
+              <Button 
+                title="Next" 
+                onPress={handleNext} 
+                style={{ width: 140 }}
+              />
             </View>
           ) : (
-            <TouchableOpacity style={styles.getStartedButton} onPress={finishOnboarding}>
-              <Text style={styles.getStartedText}>Get Started</Text>
-            </TouchableOpacity>
+            <Button 
+              title="Get Started" 
+              onPress={finishOnboarding} 
+            />
           )}
         </View>
       </View>
@@ -149,111 +156,3 @@ export default function Onboarding() {
   );
 }
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#fff',
-  },
-  slide: {
-    width,
-    alignItems: 'center',
-    padding: 20,
-  },
-  imageContainer: {
-    width: width * 0.8,
-    height: width * 0.8,
-    borderRadius: width * 0.4,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginTop: 40,
-    marginBottom: 40,
-    elevation: 10,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 10 },
-    shadowOpacity: 0.3,
-    shadowRadius: 20,
-  },
-  textContainer: {
-    alignItems: 'center',
-    paddingHorizontal: 20,
-  },
-  title: {
-    fontSize: 32,
-    fontWeight: '800',
-    color: '#1F2937',
-    textAlign: 'center',
-    marginBottom: 16,
-    lineHeight: 40,
-  },
-  description: {
-    fontSize: 16,
-    color: '#6B7280',
-    textAlign: 'center',
-    lineHeight: 24,
-    paddingHorizontal: 20,
-  },
-  footer: {
-    height: height * 0.20,
-    justifyContent: 'space-between',
-    paddingHorizontal: 20,
-    paddingBottom: 20,
-  },
-  pagination: {
-    flexDirection: 'row',
-    justifyContent: 'center',
-    alignItems: 'center',
-    height: 20,
-  },
-  dot: {
-    height: 10,
-    borderRadius: 5,
-    marginHorizontal: 4,
-  },
-  buttonContainer: {
-    marginBottom: 20,
-  },
-  navButtons: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  skipText: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#6B7280',
-    padding: 10,
-  },
-  nextButton: {
-    flexDirection: 'row',
-    backgroundColor: '#4F46E5',
-    paddingVertical: 12,
-    paddingHorizontal: 24,
-    borderRadius: 30,
-    alignItems: 'center',
-    gap: 8,
-    elevation: 3,
-  },
-  nextButtonText: {
-    color: 'white',
-    fontWeight: '600',
-    fontSize: 16,
-  },
-  getStartedButton: {
-    backgroundColor: '#4F46E5',
-    paddingVertical: 16,
-    borderRadius: 16,
-    alignItems: 'center',
-    width: '100%',
-    elevation: 5,
-    shadowColor: '#4F46E5',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-  },
-  getStartedText: {
-    color: 'white',
-    fontSize: 18,
-    fontWeight: 'bold',
-    letterSpacing: 0.5,
-  },
-});
