@@ -164,6 +164,44 @@ groupsRouter.delete("/:id/members/:userId", async (req: AuthRequest, res, next) 
   }
 });
 
+import { getSimplifiedDebts } from "../services/debtSimplification.js";
+
+// ... existing imports
+
+groupsRouter.get("/:id/simplified-debts", async (req: AuthRequest, res, next) => {
+  try {
+    const userId = (req as AuthRequest & { userEntity: { id: string } }).userEntity.id;
+    // Check membership
+    const member = await prisma.groupMember.findFirst({
+      where: { groupId: req.params.id, userId },
+    });
+    if (!member) throw new AppError(403, "Not a member of this group", "FORBIDDEN");
+
+    const debts = await getSimplifiedDebts(req.params.id);
+
+    // Enrich with user details
+    const userIds = new Set<string>();
+    debts.forEach(d => { userIds.add(d.from); userIds.add(d.to); });
+
+    const users = await prisma.user.findMany({
+      where: { id: { in: Array.from(userIds) } },
+      select: { id: true, name: true, avatarUrl: true, upiId: true, emoji: true }
+    });
+
+    const userMap = new Map(users.map(u => [u.id, u]));
+
+    const enrichedDebts = debts.map(d => ({
+      from: userMap.get(d.from),
+      to: userMap.get(d.to),
+      amount: d.amount
+    }));
+
+    res.json(enrichedDebts);
+  } catch (e) {
+    next(e);
+  }
+});
+
 // Join group by invite code or group ID
 groupsRouter.post(
   "/join",
@@ -191,10 +229,7 @@ groupsRouter.post(
       // Check if user is already a member
       const existingMember = group.members.find(m => m.userId === userId);
       if (existingMember) {
-        return res.json({
-          message: "You are already a member of this group",
-          group,
-        });
+        throw new AppError(400, "You are already a member of this group", "ALREADY_MEMBER");
       }
 
       // Add user as member
