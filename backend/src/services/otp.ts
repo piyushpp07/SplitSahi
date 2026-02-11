@@ -1,36 +1,59 @@
 import { prisma } from "../lib/prisma.js";
 import crypto from "crypto";
 import nodemailer from "nodemailer";
+import dns from "dns";
 
 // OTP configuration
 const OTP_LENGTH = 6;
 const OTP_EXPIRY_MINUTES = 10;
 
-// Setup email transporter
-const transporter = nodemailer.createTransport({
-  host: process.env.SMTP_HOST || "smtp.gmail.com",
-  port: parseInt(process.env.SMTP_PORT || "465"),
-  secure: process.env.SMTP_SECURE !== "false",
-  auth: {
-    user: process.env.SMTP_USER,
-    pass: process.env.SMTP_PASS,
-  },
-  tls: {
-    rejectUnauthorized: false
-  },
-  connectionTimeout: 10000,
-  greetingTimeout: 10000,
-  socketTimeout: 10000,
-  family: 4
-} as any);
+// Setup transporter as a let so we can handle async resolution
+let _transporter: any;
 
-// Verify connection configuration
-transporter.verify((error, success) => {
-  if (error) {
-    console.error("[OTP] ❌ SMTP Transporter Verification Failed:", error.message);
-  } else {
-    console.log("[OTP] ✅ SMTP Server is ready to take our messages");
-  }
+async function getTransporter() {
+  if (_transporter) return _transporter;
+
+  const host = process.env.SMTP_HOST || "smtp.gmail.com";
+
+  // Forcibly resolve to IPv4 address to avoid ENETUNREACH on IPv6
+  const ip = await new Promise<string>((resolve) => {
+    dns.lookup(host, { family: 4 }, (err, address) => {
+      if (err || !address) {
+        console.warn(`[OTP] DNS Lookup failed for ${host}, using hostname directly:`, err?.message);
+        resolve(host);
+      } else {
+        console.log(`[OTP] 🌐 Resolved ${host} to IPv4: ${address}`);
+        resolve(address);
+      }
+    });
+  });
+
+  _transporter = nodemailer.createTransport({
+    host: ip,
+    port: parseInt(process.env.SMTP_PORT || "465"),
+    secure: process.env.SMTP_SECURE !== "false",
+    auth: {
+      user: process.env.SMTP_USER,
+      pass: process.env.SMTP_PASS,
+    },
+    tls: {
+      rejectUnauthorized: false,
+      servername: host // Important: TLS needs the original hostname
+    },
+    connectionTimeout: 15000,
+    greetingTimeout: 15000,
+    socketTimeout: 15000,
+  } as any);
+
+  return _transporter;
+}
+
+// Pre-verify
+getTransporter().then(t => {
+  t.verify((error: any) => {
+    if (error) console.error("[OTP] ❌ SMTP Verification Failed:", error.message);
+    else console.log("[OTP] ✅ SMTP Server is ready");
+  });
 });
 
 /**
@@ -54,7 +77,8 @@ async function sendEmailOTP(email: string, code: string): Promise<void> {
   }
 
   try {
-    await transporter.sendMail({
+    const t = await getTransporter();
+    await t.sendMail({
       from: `"SplitItUp" <${process.env.SMTP_USER}>`,
       to: email,
       subject: "SplitItUp - Your Verification Code",
