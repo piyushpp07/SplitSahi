@@ -3,6 +3,7 @@ import { Platform, View, StyleSheet } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import Animated, { useAnimatedStyle, withSpring, withTiming } from "react-native-reanimated";
 import { useTheme } from "@/contexts/ThemeContext";
+import { usePushNotifications } from "@/hooks/usePushNotifications";
 
 function TabIcon({ icon, focused, colors, isDark }: { icon: any; focused: boolean; colors: any; isDark: boolean }) {
   const animatedIconStyle = useAnimatedStyle(() => {
@@ -42,6 +43,7 @@ function TabIcon({ icon, focused, colors, isDark }: { icon: any; focused: boolea
 
 export default function TabsLayout() {
   const { colors, isDark } = useTheme();
+  usePushNotifications();
 
   return (
     <Tabs

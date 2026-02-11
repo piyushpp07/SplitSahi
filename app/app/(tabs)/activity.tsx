@@ -12,11 +12,14 @@ if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental
   UIManager.setLayoutAnimationEnabledExperimental(true);
 }
 
-interface ActivityItem {
-  type: "expense" | "settlement";
+interface Activity {
   id: string;
+  type: "EXPENSE_ADDED" | "SETTLEMENT_MADE" | "GROUP_CREATED" | "FRIEND_ADDED";
   createdAt: string;
   data: any;
+  targetId?: string;
+  user: { id: string; name: string; avatarUrl?: string };
+  group?: { name: string };
 }
 
 type FilterType = "all" | "expenses" | "settlements";
@@ -30,7 +33,7 @@ export default function ActivityScreen() {
   
   const { data, isLoading, refetch, isFetching } = useQuery({
     queryKey: ["activity"],
-    queryFn: () => apiGet<{ activities: ActivityItem[] }>("/activity"),
+    queryFn: () => apiGet<{ activities: Activity[] }>("/activity"),
   });
 
   useFocusEffect(
@@ -44,35 +47,31 @@ export default function ActivityScreen() {
   const filteredActivities = useMemo(() => 
     activities.filter(item => {
       // 1. Filter by Type
-      if (filter === "expenses" && item.type !== "expense") return false;
-      if (filter === "settlements" && item.type !== "settlement") return false;
+      if (filter === "expenses" && item.type !== "EXPENSE_ADDED") return false;
+      if (filter === "settlements" && item.type !== "SETTLEMENT_MADE") return false;
 
       // 2. Filter by Search
       if (!search) return true;
       const q = search.toLowerCase();
       
-      if (item.type === "expense") {
-        return (
-          item.data.title?.toLowerCase().includes(q) || 
-          item.data.creator?.name?.toLowerCase().includes(q) ||
-          item.data.group?.name?.toLowerCase().includes(q) ||
-          item.data.totalAmount?.toString().includes(q)
-        );
-      } else {
-         // Settlement
-         return (
-           item.data.fromUser?.name?.toLowerCase().includes(q) ||
-           item.data.toUser?.name?.toLowerCase().includes(q) ||
-           item.data.amount?.toString().includes(q)
-         );
-      }
+      const title = item.data?.title || "";
+      const amount = item.data?.amount?.toString() || "";
+      const userName = item.user?.name || "";
+      const groupName = item.group?.name || "";
+      
+      return (
+        title.toLowerCase().includes(q) || 
+        userName.toLowerCase().includes(q) ||
+        groupName.toLowerCase().includes(q) ||
+        amount.includes(q)
+      );
     }),
     [activities, filter, search]
   );
 
-  function handlePress(item: ActivityItem) {
-    if (item.type === "expense") {
-      router.push(`/expense/${item.id}`);
+  function handlePress(item: Activity) {
+    if (item.type === "EXPENSE_ADDED" && item.targetId) {
+      router.push(`/expense/${item.targetId}`);
     }
   }
 
@@ -307,7 +306,7 @@ export default function ActivityScreen() {
         ) : (
           <FlatList
             data={filteredActivities}
-            keyExtractor={(item) => `${item.type}-${item.id}`}
+            keyExtractor={(item) => item.id}
             showsVerticalScrollIndicator={false}
             removeClippedSubviews={true}
             maxToRenderPerBatch={10}
@@ -319,59 +318,85 @@ export default function ActivityScreen() {
               <RefreshControl refreshing={isFetching} onRefresh={refetch} tintColor={colors.primary} />
             }
             renderItem={({ item }) => {
-              const isSettlement = item.type === "settlement";
-              const amountColor = isSettlement ? colors.warning : colors.success;
-              const iconColor = isSettlement ? colors.warning : colors.success;
-              const iconBg = colors.surfaceActive; // Simple background for icons
+              const isSettlement = item.type === "SETTLEMENT_MADE";
+              const isAdded = item.type === "EXPENSE_ADDED";
+              const amountColor = isSettlement ? colors.success : colors.text; // Settlement is usually positive (payment made/received)
               
+
+              // Determine Icon
+              let iconName: any = "receipt";
+              let iconBg = colors.surfaceActive;
+              let iconColor = colors.primary;
+
+              if (isSettlement) {
+                iconName = "swap-horizontal";
+                iconColor = colors.success;
+                iconBg = colors.success + '20';
+              } else if (item.type === "GROUP_CREATED") {
+                iconName = "people";
+                iconColor = colors.primary; // Changed from secondary which might be missing
+              } else if (item.type === "FRIEND_ADDED") {
+                iconName = "person-add";
+                iconColor = colors.textSecondary;
+              }
+
+              // Determine Title
+              let title = "";
+              if (isSettlement) {
+                 // "You paid Alice" or "Alice paid you"
+                 // data: { amount, toUserId }
+                 // item.user is the ACTOR (payer)
+                 const actorName = item.user.id === userId ? "You" : item.user.name.split(' ')[0];
+                 title = `${actorName} recorded a payment`;
+              } else if (isAdded) {
+                 title = item.data?.title || "Expense added";
+              } else if (item.type === "GROUP_CREATED") {
+                 title = `Group "${item.data?.name}" created`;
+              } else {
+                 title = "New activity";
+              }
+              
+              const amount = item.data?.amount ? Number(item.data.amount) : 0;
+
               return (
                 <TouchableOpacity 
                   style={styles.itemCard}
                   onPress={() => handlePress(item)}
-                  activeOpacity={isSettlement ? 1 : 0.7}
+                  activeOpacity={isAdded ? 0.7 : 1}
                 >
                   <View style={[styles.itemIcon, { backgroundColor: iconBg }]}>
                     <Ionicons 
-                      name={isSettlement ? "swap-horizontal" : "receipt"} 
+                      name={iconName} 
                       size={18} 
                       color={iconColor} 
                     />
                   </View>
                   
                   <View style={styles.itemContent}>
-                    {isSettlement ? (
-                      <>
-                        <Text style={styles.itemTitle}>
-                          {item.data.fromUser?.name} paid {item.data.toUser?.name}
+                      <Text style={styles.itemTitle}>{title}</Text>
+                      <View style={styles.itemMeta}>
+                        <Text style={styles.itemSubtitle}>
+                          {item.user?.name || "Unknown"} • {formatDate(item.createdAt)}
                         </Text>
-                        <Text style={styles.itemSubtitle}>{formatDate(item.createdAt)}</Text>
-                      </>
-                    ) : (
-                      <>
-                        <Text style={styles.itemTitle}>{item.data.title}</Text>
+                      </View>
+                      {item.group && (
                         <View style={styles.itemMeta}>
-                          <Text style={styles.itemSubtitle}>
-                            {item.data.creator?.name} • {formatDate(item.createdAt)}
-                          </Text>
+                          <Ionicons name="people" size={10} color={colors.textTertiary} />
+                          <Text style={[styles.itemSubtitle, { marginLeft: 4, fontSize: 10 }]}>{item.group.name}</Text>
                         </View>
-                        {item.data.group && (
-                          <View style={styles.itemMeta}>
-                            <Ionicons name="people" size={10} color={colors.textTertiary} />
-                            <Text style={[styles.itemSubtitle, { marginLeft: 4, fontSize: 10 }]}>{item.data.group.name}</Text>
-                          </View>
-                        )}
-                      </>
-                    )}
+                      )}
                   </View>
                   
-                  <View style={styles.amountContainer}>
-                    <Text style={[styles.amount, { color: amountColor }]}>
-                      ₹{Number(isSettlement ? item.data.amount : item.data.totalAmount).toFixed(0)}
-                    </Text>
-                    {!isSettlement && (
-                      <Text style={styles.category}>{item.data.category}</Text>
-                    )}
-                  </View>
+                  {(isAdded || isSettlement) && amount > 0 && (
+                    <View style={styles.amountContainer}>
+                      <Text style={[styles.amount, { color: isSettlement ? colors.success : colors.text }]}>
+                        ₹{amount.toFixed(0)}
+                      </Text>
+                      {isAdded && item.data.category && (
+                        <Text style={styles.category}>{item.data.category}</Text>
+                      )}
+                    </View>
+                  )}
                 </TouchableOpacity>
               );
             }}

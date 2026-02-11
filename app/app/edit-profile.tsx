@@ -15,7 +15,8 @@ export default function EditProfileScreen() {
   const [name, setName] = useState(user?.name || "");
   const [upiId, setUpiId] = useState(user?.upiId || "");
   const [phone, setPhone] = useState(user?.phone || "");
-  const [emoji, setEmoji] = useState((user as any)?.emoji || "");
+  const [email, setEmail] = useState(user?.email || "");
+  const [emoji, setEmoji] = useState((user as any)?.emoji || "👤");
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
   const [loading, setLoading] = useState(false);
   const [isUpiVerified, setIsUpiVerified] = useState(!!user?.upiId);
@@ -78,16 +79,20 @@ export default function EditProfileScreen() {
        return;
     }
     
-    // Validate phone format only if provided
-    if (phone.trim() && !/^\d{10}$/.test(phone.trim().replace(/\D/g, ''))) {
-      Alert.alert("Invalid Phone", "Please enter a valid 10-digit mobile number");
-      return;
+    // Validate phone format only if provided and changed
+    if (phone.trim() && phone.trim() !== user?.phone) {
+      const digitsOnly = phone.trim().replace(/\D/g, '');
+      if (digitsOnly.length < 10) {
+        Alert.alert("Invalid Phone", "Please enter a valid mobile number");
+        return;
+      }
     }
 
     setLoading(true);
     try {
       const updated = await apiPatch<any>("/users/me", {
         name: name.trim(),
+        email: email.trim() || null,
         upiId: upiId.trim() || null,
         phone: phone.trim() || null,
         emoji: emoji || null,
@@ -241,6 +246,26 @@ export default function EditProfileScreen() {
                 placeholder="+91 98765 43210"
                 placeholderTextColor={colors.textMuted}
                 keyboardType="phone-pad"
+              />
+            </View>
+
+            <View style={{ marginBottom: 20 }}>
+              <Text style={{ color: colors.textSecondary, fontSize: 12, fontWeight: 'bold', marginBottom: 8 }}>Email Address</Text>
+              <TextInput
+                style={{ 
+                  backgroundColor: colors.surface, 
+                  borderRadius: 12, 
+                  padding: 16, 
+                  color: colors.text, 
+                  borderWidth: 1, 
+                  borderColor: colors.border 
+                }}
+                value={email}
+                onChangeText={setEmail}
+                placeholder="user@example.com"
+                placeholderTextColor={colors.textMuted}
+                keyboardType="email-address"
+                autoCapitalize="none"
               />
             </View>
           </View>

@@ -482,6 +482,32 @@ export default function AddExpenseScreen() {
             </TouchableOpacity>
           </View>
 
+          {/* Recurring / Frequency */}
+          <View style={styles.section}>
+            <Text style={styles.label}>Repeat?</Text>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+              {[
+                { key: null, label: "One-time" },
+                { key: "DAILY", label: "Daily" },
+                { key: "WEEKLY", label: "Weekly" },
+                { key: "MONTHLY", label: "Monthly" },
+              ].map((freq) => (
+                <TouchableOpacity
+                  key={freq.key || "none"}
+                  onPress={() => setFrequency(freq.key as string | null)}
+                  style={[
+                    styles.categoryBtn,
+                    frequency === freq.key ? styles.categoryBtnActive : styles.categoryBtnInactive
+                  ]}
+                >
+                  <Text style={frequency === freq.key ? styles.categoryTextActive : styles.categoryTextInactive}>
+                    {freq.label}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+          </View>
+
           {showDatePicker && (
             <DateTimePicker
               value={expenseDate}

@@ -1,8 +1,8 @@
 import { create } from "zustand";
 import * as SecureStore from "expo-secure-store";
 
-const TOKEN_KEY = "splitsahise_token";
-const USER_KEY = "splitsahise_user";
+const TOKEN_KEY = "splititup_token";
+const USER_KEY = "splititup_user";
 
 export interface User {
   id: string;

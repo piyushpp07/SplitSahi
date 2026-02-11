@@ -1,6 +1,7 @@
 import cron from "node-cron";
 import { prisma } from "../lib/prisma.js";
 import { RecurringFrequency, SplitType } from "@prisma/client";
+import { logActivity, ActivityType, sendNotification } from "./activity.js";
 
 export function initScheduler() {
   console.log("Initializing Recurring Expense Scheduler...");
@@ -23,9 +24,14 @@ async function processRecurringExpenses() {
           lte: now,
         },
       },
+      include: {
+        creator: true
+      }
     });
 
-    console.log(`[Scheduler] Found ${dueExpenses.length} due recurring expenses.`);
+    if (dueExpenses.length > 0) {
+      console.log(`[Scheduler] Found ${dueExpenses.length} due recurring expenses.`);
+    }
 
     for (const re of dueExpenses) {
       await processSingleRecurringExpense(re);
@@ -39,83 +45,107 @@ async function processSingleRecurringExpense(re: any) {
   try {
     console.log(`[Scheduler] Processing Recurring Expense: ${re.title} (${re.id})`);
 
-    // 1. Create the new Expense
-    // We need to construct payers, participants, and splits
-    // Assuming creator pays full amount for recurring (simplification for MVP)
-    // Or we should store 'payerId' in recurring model? 
-    // Usually recurring expenses are paid by creator (e.g. Netflix subscription).
-
     const participantIds = re.participants as string[];
     const splitsData = re.splits as any[];
 
-    // Create configured splits
-    // Note: splitsData should be array of { userId, amountOwed, percentage, shares }
-
     // Create the expense transactionally
     await prisma.$transaction(async (tx) => {
+      // 1. Create Expense
       const expense = await tx.expense.create({
         data: {
           title: re.title,
-          description: re.description, // Link to recurring? "Recurring: Netflix"
-          // amount: removed, using totalAmount
-          totalAmount: re.amount, // Schema uses totalAmount
+          description: "Recurring Expense",
+          totalAmount: re.amount,
           category: re.category,
           currency: "INR",
           splitType: re.splitType as SplitType,
           groupId: re.groupId,
           createdById: re.createdById,
-          expenseDate: new Date(), // Now
-
-          // Creators/Payers
-          payers: {
-            create: {
-              userId: re.createdById,
-              amountPaid: re.amount,
-            },
-          },
-
-          // Participants
-          participants: {
-            createMany: {
-              data: participantIds.map((id) => ({ userId: id })),
-            },
-          },
-
-          // Splits
-          splits: (re.splitType === "EQUAL") ? {
-            createMany: {
-              data: participantIds.map((uid: string) => ({
-                userId: uid,
-                amountOwed: Number(re.amount) / participantIds.length,
-              }))
-            }
-          } : (splitsData ? {
-            createMany: {
-              data: splitsData.map((s: any) => ({
-                userId: s.userId,
-                amountOwed: s.amountOwed,
-                percentage: s.percentage,
-                shares: s.shares
-              }))
-            }
-          } : undefined)
+          expenseDate: new Date(),
         },
       });
 
-      console.log(`[Scheduler] Created Expense ${expense.id} from Recurring ${re.id}`);
+      // 2. Create Payers (Creator pays fully)
+      await tx.expensePayer.create({
+        data: {
+          expenseId: expense.id,
+          userId: re.createdById,
+          amountPaid: re.amount,
+        },
+      });
 
-      // 2. Update nextRunDate
+      // 3. Create Participants
+      await tx.expenseParticipant.createMany({
+        data: participantIds.map((uid: string) => ({
+          expenseId: expense.id,
+          userId: uid,
+        })),
+        skipDuplicates: true,
+      });
+
+      // 4. Create Splits
+      if (re.splitType === "EQUAL") {
+        const share = Number(re.amount) / participantIds.length;
+        await tx.expenseSplit.createMany({
+          data: participantIds.map((uid: string) => ({
+            expenseId: expense.id,
+            userId: uid,
+            amountOwed: share, // Decimal checks not strictly enforced here but okay
+          })),
+        });
+      } else if (splitsData) {
+        // EXACT, PERCENTAGE, SHARE
+        await tx.expenseSplit.createMany({
+          data: splitsData.map((s: any) => ({
+            expenseId: expense.id,
+            userId: s.userId,
+            amountOwed: s.amountOwed || 0,
+            percentage: s.percentage,
+            shares: s.shares
+          })),
+        });
+      }
+
+      console.log(`[Scheduler] Created Expense ${expense.id}`);
+
+      // 5. Update Recurring Schedule
       const nextDate = calculateNextRunDate(new Date(re.nextRunDate), re.frequency);
-
       await tx.recurringExpense.update({
         where: { id: re.id },
         data: {
           lastRunDate: new Date(),
           nextRunDate: nextDate,
-        }
+        },
       });
 
-      console.log(`[Scheduler] Updated Recurring ${re.id} next run to ${nextDate.toISOString()}`);
+      // 6. Async Post-Processing (Activity & Notify)
+      // Since specific notification logic is outside transaction, we can fire off a promise or do it here if safe.
+      // We'll log activity for the group/creator.
+
+      // Activity
+      await logActivity({
+        userId: re.createdById,
+        type: ActivityType.EXPENSE_ADDED,
+        targetId: expense.id,
+        groupId: re.groupId || undefined,
+        data: {
+          title: expense.title,
+          amount: Number(expense.totalAmount),
+          recurring: true
+        },
+      });
+
+      // Notify Participants (Except Creator)
+      for (const uid of participantIds) {
+        if (uid !== re.createdById) {
+          await sendNotification(
+            uid,
+            "Recurring Expense Added",
+            `${re.creator.name} (Auto) added pending expense: ${expense.title}`,
+            expense.id
+          );
+        }
+      }
     });
 
   } catch (error) {
@@ -126,13 +156,13 @@ async function processSingleRecurringExpense(re: any) {
 function calculateNextRunDate(current: Date, freq: RecurringFrequency): Date {
   const next = new Date(current);
   switch (freq) {
-    case "DAILY":
+    case RecurringFrequency.DAILY:
       next.setDate(next.getDate() + 1);
       break;
-    case "WEEKLY":
+    case RecurringFrequency.WEEKLY:
       next.setDate(next.getDate() + 7);
       break;
-    case "MONTHLY":
+    case RecurringFrequency.MONTHLY:
       next.setMonth(next.getMonth() + 1);
       break;
   }

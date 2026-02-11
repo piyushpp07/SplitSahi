@@ -20,11 +20,11 @@ export default function TermsOfService() {
           Last Updated: February 9, 2026
         </Text>
         <Text style={{ color: colors.text, fontSize: 14, lineHeight: 22 }}>
-          By accessing or using SplitSahi, you agree to be bound by these terms.
+          By accessing or using SplitItUp, you agree to be bound by these terms.
           {"\n\n"}
           <Text style={{ fontWeight: 'bold' }}>1. Acceptance of Terms</Text>
           {"\n"}
-          SplitSahi provides a platform for managing shared expenses. By creating an account, you represent that you are at least 18 years old or are using the app under the supervision of a parent or guardian.
+          SplitItUp provides a platform for managing shared expenses. By creating an account, you represent that you are at least 18 years old or are using the app under the supervision of a parent or guardian.
           {"\n\n"}
           <Text style={{ fontWeight: 'bold' }}>2. User Responsibilities</Text>
           {"\n"}
@@ -35,7 +35,7 @@ export default function TermsOfService() {
           {"\n\n"}
           <Text style={{ fontWeight: 'bold' }}>3. Payments and UPI</Text>
           {"\n"}
-          SplitSahi facilitates payment tracking and provides deep links to UPI apps. We are NOT a payment processor. Any financial transactions occur directly between users via third-party UPI applications. We are not responsible for failed transactions or incorrect payments.
+          SplitItUp facilitates payment tracking and provides deep links to UPI apps. We are NOT a payment processor. Any financial transactions occur directly between users via third-party UPI applications. We are not responsible for failed transactions or incorrect payments.
           {"\n\n"}
           <Text style={{ fontWeight: 'bold' }}>4. Prohibited Conduct</Text>
           {"\n"}

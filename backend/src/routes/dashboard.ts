@@ -18,8 +18,8 @@ dashboardRouter.get("/", async (req: AuthRequest, res, next) => {
     // Enrich transactions with user details
     const userIds = new Set<string>();
     for (const t of simplifiedTransactions) {
-      userIds.add(t.fromUserId);
-      userIds.add(t.toUserId);
+      userIds.add(t.from);
+      userIds.add(t.to);
     }
 
     const users = await prisma.user.findMany({
@@ -30,18 +30,20 @@ dashboardRouter.get("/", async (req: AuthRequest, res, next) => {
     const userMap = new Map(users.map((u) => [u.id, u]));
 
     const enrichedTransactions = simplifiedTransactions.map((t) => {
-      const fromUser = userMap.get(t.fromUserId);
-      const toUser = userMap.get(t.toUserId);
+      const fromUser = userMap.get(t.from);
+      const toUser = userMap.get(t.to);
 
       // Robust logging to catch why "Vinay" might be appearing twice
-      if (t.fromUserId !== userId && t.toUserId !== userId) {
-        console.warn(`[Dashboard] PRIVACY LEAK? Transaction found not involving user ${userId}: ${t.fromUserId} owes ${t.toUserId}`);
+      if (t.from !== userId && t.to !== userId) {
+        console.warn(`[Dashboard] PRIVACY LEAK? Transaction found not involving user ${userId}: ${t.from} owes ${t.to}`);
       }
 
       return {
-        ...t,
-        fromUser: fromUser || { id: t.fromUserId, name: "Unknown User" },
-        toUser: toUser || { id: t.toUserId, name: "Unknown User" },
+        amount: t.amount,
+        fromUserId: t.from,
+        toUserId: t.to,
+        fromUser: fromUser || { id: t.from, name: "Unknown User" },
+        toUser: toUser || { id: t.to, name: "Unknown User" },
       };
     });
 

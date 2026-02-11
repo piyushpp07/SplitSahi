@@ -427,7 +427,7 @@ export default function PreferencesScreen() {
 
         {/* Version */}
         <View style={{ alignItems: 'center', marginVertical: 32 }}>
-          <Text style={{ color: colors.textMuted, fontSize: 12 }}>SplitSahiSe v1.0.0</Text>
+          <Text style={{ color: colors.textMuted, fontSize: 12 }}>SplitItUp v1.0.0</Text>
         </View>
       </ScrollView>
     </SafeAreaView>

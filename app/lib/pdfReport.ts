@@ -77,7 +77,7 @@ export async function generateGroupPDF(data: ReportData) {
         </table>
 
         <div class="footer">
-          Generated via SplitSahiSe - Smart Expense Manager
+          Generated via SplitItUp - Smart Expense Manager
         </div>
       </body>
     </html>
@@ -92,7 +92,7 @@ export async function generateGroupPDF(data: ReportData) {
         } else {
             await Sharing.shareAsync(uri, {
                 mimeType: 'application/pdf',
-                dialogTitle: `SplitSahi - ${data.groupName} Report`,
+                dialogTitle: `SplitItUp - ${data.groupName} Report`,
                 UTI: 'com.adobe.pdf'
             });
         }
