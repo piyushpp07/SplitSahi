@@ -9,12 +9,24 @@ const OTP_EXPIRY_MINUTES = 10;
 // Setup email transporter
 const transporter = nodemailer.createTransport({
   host: process.env.SMTP_HOST || "smtp.gmail.com",
-  port: parseInt(process.env.SMTP_PORT || "587"),
-  secure: process.env.SMTP_SECURE === "true", // true for 465, false for other ports
+  port: parseInt(process.env.SMTP_PORT || "465"),
+  secure: process.env.SMTP_SECURE !== "false", // Default to true (465) unless explicitly "false"
   auth: {
     user: process.env.SMTP_USER,
     pass: process.env.SMTP_PASS,
   },
+  tls: {
+    rejectUnauthorized: false // Helps with some cloud-provider handshake issues
+  }
+});
+
+// Verify connection configuration
+transporter.verify((error, success) => {
+  if (error) {
+    console.error("[OTP] ❌ SMTP Transporter Verification Failed:", error.message);
+  } else {
+    console.log("[OTP] ✅ SMTP Server is ready to take our messages");
+  }
 });
 
 /**
@@ -57,8 +69,12 @@ async function sendEmailOTP(email: string, code: string): Promise<void> {
       `,
     });
     console.log(`[OTP] Email sent successfully to ${email}`);
-  } catch (error) {
-    console.error("[OTP] Failed to send email (BUT OTP WAS GENERATED - see above):", error);
+  } catch (error: any) {
+    console.error(`[OTP] ❌ Failed to send email to ${email}:`, error.message);
+    if (error.response) {
+      console.error(`[OTP] SMTP Response:`, error.response);
+    }
+    console.log(`[OTP] FALLBACK: GENERATED CODE FOR ${email} IS: ${code}`);
   }
 }
 
