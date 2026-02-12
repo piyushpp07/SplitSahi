@@ -4,7 +4,8 @@ export class AppError extends Error {
   constructor(
     public statusCode: number,
     message: string,
-    public code?: string
+    public code?: string,
+    public data?: any
   ) {
     super(message);
     this.name = "AppError";
@@ -22,6 +23,7 @@ export function errorHandler(
     return res.status(statusCode).json({
       error: err.message,
       code: (err as any).code,
+      data: (err as any).data,
     });
   }
   console.error("Unhandled Error:", err);

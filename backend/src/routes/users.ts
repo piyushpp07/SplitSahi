@@ -113,3 +113,25 @@ usersRouter.post(
     }
   }
 );
+
+usersRouter.post(
+  "/change-password",
+  body("oldPassword").notEmpty(),
+  body("newPassword").isLength({ min: 6 }),
+  async (req: AuthRequest, res, next) => {
+    try {
+      const err = validationResult(req);
+      if (!err.isEmpty()) throw new AppError(400, err.array()[0].msg, "VALIDATION_ERROR");
+
+      const userId = (req as AuthRequest & { userEntity: { id: string } }).userEntity.id;
+      const { oldPassword, newPassword } = req.body;
+
+      const { changePassword } = await import("../services/auth.js");
+      await changePassword(userId, oldPassword, newPassword);
+
+      res.json({ success: true, message: "Password updated successfully" });
+    } catch (e) {
+      next(e);
+    }
+  }
+);

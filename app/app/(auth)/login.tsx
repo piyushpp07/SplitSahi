@@ -35,8 +35,24 @@ export default function LoginScreen() {
         await setAuth(res.token, res.user);
         router.replace("/(tabs)");
       }
-    } catch (e) {
-      Alert.alert("Error", e instanceof Error ? e.message : "Login failed. Please check your credentials.");
+    } catch (e: any) {
+      if (e.code === "EMAIL_NOT_VERIFIED") {
+        Alert.alert(
+          "Verification Needed", 
+          "Your email is not verified. We've sent a new code to your email.",
+          [
+            { 
+              text: "Verify Now", 
+              onPress: () => router.push({
+                pathname: "/(auth)/otp-verification",
+                params: { email: e.data?.email || identifier }
+              })
+            }
+          ]
+        );
+      } else {
+        Alert.alert("Error", e instanceof Error ? e.message : "Login failed. Please check your credentials.");
+      }
     } finally {
       setLoading(false);
     }

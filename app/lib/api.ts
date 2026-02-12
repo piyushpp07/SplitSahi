@@ -27,7 +27,18 @@ const getLocalUrl = () => {
 export const API_URL = getLocalUrl();
 const API_BASE = API_URL;
 
-export type ApiError = { error: string; code?: string };
+export type ApiError = { error: string; code?: string; data?: any };
+
+export class RequestError extends Error {
+  code?: string;
+  data?: any;
+  constructor(message: string, code?: string, data?: any) {
+    super(message);
+    this.name = "RequestError";
+    this.code = code;
+    this.data = data;
+  }
+}
 
 async function getToken(): Promise<string | null> {
   try {
@@ -56,10 +67,10 @@ export async function api<T>(
   // console.log(`[API] ${init.method || 'GET'} ${url}`);
 
   const res = await fetch(url, { ...init, headers });
-  const data = (await res.json().catch(() => ({}))) as T | ApiError;
+  const data = (await res.json().catch(() => ({}))) as any;
   if (!res.ok) {
     const err = data as ApiError;
-    throw new Error(err.error ?? `Request failed: ${res.status}`);
+    throw new RequestError(err.error ?? `Request failed: ${res.status}`, err.code, err.data);
   }
   return data as T;
 }
