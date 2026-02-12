@@ -38,20 +38,20 @@ async function sendEmailOTP(email: string, code: string): Promise<void> {
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        from: "SplitSahi <onboarding@resend.dev>",
+        from: "SplitItUp <onboarding@resend.dev>",
         to: email,
-        subject: "SplitSahi - Your Verification Code",
+        subject: "SplitItUp - Your Verification Code",
         html: `
           <div style="font-family: sans-serif; max-width: 600px; margin: auto; padding: 20px; border: 1px solid #eee; border-radius: 10px;">
             <h2 style="color: #059669; text-align: center;">Verify Your Email</h2>
             <p>Hi there,</p>
-            <p>Thank you for joining SplitSahi! Use the code below to complete your registration:</p>
+            <p>Thank you for joining SplitItUp! Use the code below to complete your registration:</p>
             <div style="background: #f3f4f6; padding: 20px; text-align: center; border-radius: 8px; margin: 20px 0;">
               <span style="font-size: 32px; font-weight: bold; letter-spacing: 5px; color: #111827;">${code}</span>
             </div>
             <p>This code will expire in <strong>${OTP_EXPIRY_MINUTES} minutes</strong>. If you didn't request this, please ignore this email.</p>
             <hr style="border: none; border-top: 1px solid #eee; margin: 20px 0;" />
-            <p style="font-size: 12px; color: #6b7280; text-align: center;">SplitSahi - Manage shared expenses with ease.</p>
+            <p style="font-size: 12px; color: #6b7280; text-align: center;">SplitItUp - Manage shared expenses with ease.</p>
           </div>
         `,
       }),
