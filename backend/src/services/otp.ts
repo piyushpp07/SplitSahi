@@ -7,26 +7,8 @@ import dns from "dns";
 const OTP_LENGTH = 6;
 const OTP_EXPIRY_MINUTES = 10;
 
-// Setup transporter using the "service" shortcut which handles most Gmail-specific quirks
-const transporter = nodemailer.createTransport({
-  service: "gmail",
-  auth: {
-    user: process.env.SMTP_USER,
-    pass: process.env.SMTP_PASS,
-  },
-  // High timeouts for cloud reliability
-  connectionTimeout: 20000,
-  greetingTimeout: 20000,
-  socketTimeout: 20000,
-});
-
-// Logs for Render Dashboard to verify env vars are reaching the app
-console.log("[OTP] Mail Service initialized with config:", {
-  user: process.env.SMTP_USER,
-  pass: process.env.SMTP_PASS ? "PRESENT" : "MISSING",
-  port: process.env.SMTP_PORT,
-  secure: process.env.SMTP_SECURE
-});
+// Email configuration
+const RESEND_API_URL = "https://api.resend.com/emails";
 
 /**
  * Generate a random 6-digit OTP code
@@ -36,43 +18,53 @@ function generateOTP(): string {
 }
 
 /**
- * Send OTP via email using nodemailer
+ * Send OTP via email using Resend API (Standard for cloud platforms like Render)
  */
 async function sendEmailOTP(email: string, code: string): Promise<void> {
-  console.log(`[OTP] 🚀 Attempting email send to ${email}`);
-  console.log(`[OTP] FALLBACK/DEV CODE FOR ${email}: ${code}`);
+  console.log(`[OTP] 🚀 Attempting email send to ${email} via Resend`);
 
-  if (!process.env.SMTP_USER || !process.env.SMTP_PASS) {
-    console.warn("[OTP] SMTP credentials missing. Please set SMTP_USER and SMTP_PASS in Render.");
+  const apiKey = process.env.RESEND_API_KEY;
+  if (!apiKey) {
+    console.warn("[OTP] ❌ RESEND_API_KEY is missing in environment variables.");
+    console.log(`[OTP] FOR DEV/DEBUG: Code for ${email} is: ${code}`);
     return;
   }
 
   try {
-    await transporter.sendMail({
-      from: `"SplitSahi" <${process.env.SMTP_USER}>`,
-      to: email,
-      subject: "SplitSahi - Your Verification Code",
-      html: `
-        <div style="font-family: sans-serif; max-width: 600px; margin: auto; padding: 20px; border: 1px solid #eee; border-radius: 10px;">
-          <h2 style="color: #059669; text-align: center;">Verify Your Email</h2>
-          <p>Hi there,</p>
-          <p>Thank you for joining SplitItUp! Use the code below to complete your registration:</p>
-          <div style="background: #f3f4f6; padding: 20px; text-align: center; border-radius: 8px; margin: 20px 0;">
-            <span style="font-size: 32px; font-weight: bold; letter-spacing: 5px; color: #111827;">${code}</span>
+    const response = await fetch(RESEND_API_URL, {
+      method: "POST",
+      headers: {
+        "Authorization": `Bearer ${apiKey}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        from: "SplitSahi <onboarding@resend.dev>",
+        to: email,
+        subject: "SplitSahi - Your Verification Code",
+        html: `
+          <div style="font-family: sans-serif; max-width: 600px; margin: auto; padding: 20px; border: 1px solid #eee; border-radius: 10px;">
+            <h2 style="color: #059669; text-align: center;">Verify Your Email</h2>
+            <p>Hi there,</p>
+            <p>Thank you for joining SplitSahi! Use the code below to complete your registration:</p>
+            <div style="background: #f3f4f6; padding: 20px; text-align: center; border-radius: 8px; margin: 20px 0;">
+              <span style="font-size: 32px; font-weight: bold; letter-spacing: 5px; color: #111827;">${code}</span>
+            </div>
+            <p>This code will expire in <strong>${OTP_EXPIRY_MINUTES} minutes</strong>. If you didn't request this, please ignore this email.</p>
+            <hr style="border: none; border-top: 1px solid #eee; margin: 20px 0;" />
+            <p style="font-size: 12px; color: #6b7280; text-align: center;">SplitSahi - Manage shared expenses with ease.</p>
           </div>
-          <p>This code will expire in <strong>${OTP_EXPIRY_MINUTES} minutes</strong>. If you didn't request this, please ignore this email.</p>
-          <hr style="border: none; border-top: 1px solid #eee; margin: 20px 0;" />
-          <p style="font-size: 12px; color: #6b7280; text-align: center;">SplitItUp - Manage shared expenses with ease.</p>
-        </div>
-      `,
+        `,
+      }),
     });
-    console.log(`[OTP] Email sent successfully to ${email}`);
-  } catch (error: any) {
-    console.error(`[OTP] ❌ Failed to send email to ${email}:`, error.message);
-    if (error.response) {
-      console.error(`[OTP] SMTP Response:`, error.response);
+
+    if (response.ok) {
+      console.log(`[OTP] ✅ Email sent successfully to ${email}`);
+    } else {
+      const errorData = await response.json() as any;
+      console.error(`[OTP] ❌ Resend API Error:`, errorData);
     }
-    console.log(`[OTP] FALLBACK: GENERATED CODE FOR ${email} IS: ${code}`);
+  } catch (error: any) {
+    console.error(`[OTP] ❌ Network error while calling Resend:`, error.message);
   }
 }
 
@@ -190,9 +182,9 @@ export async function verifyOTP(
   type: "email" | "phone"
 ): Promise<{ success: boolean; message: string }> {
   try {
-    // Master OTP for development AND prod recovery
-    if (code === "111111") {
-      console.log(`[OTP] 🚨 EMERGENCY MASTER OTP (111111) USED FOR ${identifier}`);
+    // Master OTP for development bypass
+    if (process.env.NODE_ENV !== "production" && code === "111111") {
+      console.log(`[OTP] 🚨 MASTER OTP (111111) USED FOR ${identifier}`);
 
       // Update user verification status
       if (type === "email") {
