@@ -244,6 +244,21 @@ export default function PreferencesScreen() {
               />
             </View>
 
+            {/* Change Password */}
+            <TouchableOpacity 
+              style={styles.row}
+              onPress={() => router.push("/change-password")}
+            >
+              <View style={styles.rowIconContainer}>
+                <Ionicons name="key-outline" size={18} color={colors.primary} />
+              </View>
+              <View style={styles.rowContent}>
+                <Text style={styles.rowTitle}>Change Password</Text>
+                <Text style={styles.rowSubtitle}>Update your account security</Text>
+              </View>
+              <Ionicons name="chevron-forward" size={18} color={colors.textTertiary} />
+            </TouchableOpacity>
+
             {/* Test Biometric */}
             {biometricAvailable && (
               <TouchableOpacity 

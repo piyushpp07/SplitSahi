@@ -16,8 +16,8 @@ authRouter.post(
     try {
       const err = validationResult(req);
       if (!err.isEmpty()) throw new AppError(400, err.array()[0].msg, "VALIDATION_ERROR");
-      const { email, password, name, username, emoji, skipOTP } = req.body;
-      const result = await register(email, password, name, username, emoji, skipOTP);
+      const { email, password, name, username, emoji } = req.body;
+      const result = await register(email, password, name, username, emoji);
       res.status(201).json(result);
     } catch (e) {
       next(e);
