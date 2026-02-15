@@ -79,8 +79,27 @@ authRouter.post(
       if (!err.isEmpty()) throw new AppError(400, err.array()[0].msg, "VALIDATION_ERROR");
       const { identifier, type } = req.body;
       const { sendOTP } = await import("../services/otp.js");
-      await sendOTP(identifier, type || "phone");
+
+      // Basic identifier verification (generic)
+      await sendOTP(identifier, type || "email");
       res.json({ success: true, message: "OTP sent successfully" });
+    } catch (e) {
+      next(e);
+    }
+  }
+);
+
+authRouter.post(
+  "/forgot-password",
+  body("email").isEmail().normalizeEmail(),
+  async (req, res, next) => {
+    try {
+      const err = validationResult(req);
+      if (!err.isEmpty()) throw new AppError(400, err.array()[0].msg, "VALIDATION_ERROR");
+      const { email } = req.body;
+      const { forgotPasswordOTP } = await import("../services/auth.js");
+      const result = await forgotPasswordOTP(email);
+      res.json(result);
     } catch (e) {
       next(e);
     }
