@@ -1,10 +1,10 @@
 {
   "expo": {
     "name": "SplitItUp",
-    "slug": "splititup",
+    "slug": "splitsahi",
     "version": "1.0.0",
     "orientation": "portrait",
-    "userInterfaceStyle": "dark",
+    "userInterfaceStyle": "automatic",
     "scheme": "splititup",
     "splash": {
       "image": "./assets/images/splash.png",
@@ -21,7 +21,8 @@
           "phonepe",
           "paytm",
           "bhim"
-        ]
+        ],
+        "NSFaceIDUsageDescription": "Allow SplitItUp to use Face ID for secure login."
       }
     },
     "icon": "./assets/images/icon.png",
@@ -51,6 +52,7 @@
     "plugins": [
       "expo-router",
       "expo-secure-store",
+      "expo-local-authentication",
       "expo-asset",
       "@react-native-community/datetimepicker"
     ],

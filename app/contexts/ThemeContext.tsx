@@ -2,8 +2,8 @@ import { createContext, useContext, ReactNode, useState, useEffect } from "react
 import { useColorScheme } from "react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
-type Theme = "light" | "dark";
-type ThemeMode = "system" | "light" | "dark";
+export type Theme = "light" | "dark";
+export type ThemeMode = "system" | "light" | "dark";
 
 // Professional Typography System
 interface Typography {
