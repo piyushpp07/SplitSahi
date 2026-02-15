@@ -275,6 +275,8 @@ model OTPVerification {
   identifier String   // Email or phone number
   code       String   // 6-digit OTP code
   type       String   // 'email' or 'phone'
+  permissions Json?   // Optional: Store access scope or registration data
+  metadata   Json?    // Store temp user data (name, passwordHash, etc) during registration
   expiresAt  DateTime
   verified   Boolean  @default(false)
   createdAt  DateTime @default(now())
