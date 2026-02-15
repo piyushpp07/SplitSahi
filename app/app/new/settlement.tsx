@@ -11,6 +11,7 @@ import { useTheme } from "@/contexts/ThemeContext";
 import QRCode from "react-native-qrcode-svg";
 import * as Linking from "expo-linking";
 import { View as RNView } from "react-native";
+import CurrencySelector from "@/components/CurrencySelector";
 
 interface Friend {
   id: string;
@@ -24,6 +25,7 @@ export default function AddSettlementScreen() {
   const [toUserId, setToUserId] = useState<string | null>(params.toUserId || null);
   const [direction, setDirection] = useState<"YOU_PAID" | "THEY_PAID">((params.direction as any) || "YOU_PAID");
   const [amount, setAmount] = useState(params.amount || "");
+  const [currency, setCurrency] = useState("INR");
   const [paymentMethod, setPaymentMethod] = useState<"CASH" | "UPI" | "OTHER">("CASH");
   const [notes, setNotes] = useState("");
   const [loading, setLoading] = useState(false);
@@ -50,6 +52,7 @@ export default function AddSettlementScreen() {
         fromUserId: direction === "YOU_PAID" ? currentUser?.id : toUserId,
         toUserId: direction === "YOU_PAID" ? toUserId : currentUser?.id,
         amount: parseFloat(amount),
+        currency,
         paymentMethod,
         notes: notes || undefined,
         groupId: params.groupId || undefined,
@@ -178,9 +181,11 @@ export default function AddSettlementScreen() {
               flexDirection: 'row', 
               alignItems: 'center', 
               borderWidth: 1, 
-              borderColor: colors.border 
+              borderColor: colors.border
             }}>
-              <Text style={{ color: colors.primary, fontWeight: 'bold', fontSize: 24, marginRight: 8 }}>₹</Text>
+              <View style={{ marginRight: 8, borderRightWidth: 1, borderRightColor: colors.border, paddingRight: 8 }}>
+                <CurrencySelector selectedCurrency={currency} onSelect={setCurrency} compact={true} />
+              </View>
               <TextInput
                 style={{ flex: 1, color: colors.text, fontSize: 30, fontWeight: 'bold' }}
                 placeholder="0.00"

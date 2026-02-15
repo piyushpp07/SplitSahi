@@ -1,33 +1,111 @@
-import { useState } from 'react';
-import { View, Text, TouchableOpacity, ScrollView, TextInput, StyleSheet, Modal } from 'react-native';
+import { useState, useMemo, useEffect } from 'react';
+import { View, Text, TouchableOpacity, TextInput, StyleSheet, Modal, FlatList, Dimensions, Platform } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@/contexts/ThemeContext';
+import { SafeAreaView } from 'react-native-safe-area-context';
+
+const { width } = Dimensions.get('window');
+const COLUMN_COUNT = 7;
+const ITEM_SIZE = width / COLUMN_COUNT;
 
 const EMOJI_CATEGORIES = {
   smileys: {
     label: 'Smileys',
-    icon: 'happy-outline',
-    emojis: ['😊', '😂', '🥰', '😎', '🤩', '😇', '🙌', '👍', '✨', '💫', '🌟', '⭐'],
+    icon: 'happy-outline' as const,
+    emojis: [
+      '😊', '😂', '🥰', '😎', '🤩', '😇', '🙌', '👍', '✨', '💫', '🌟', '⭐',
+      '😄', '😃', '😁', '😆', '😅', '🤣', '🙂', '🙃', '😉', '😌', '😍', '😘',
+      '😗', '😙', '😚', '😋', '😛', '😝', '😜', '🤪', '🤨', '🧐', '🤓', '😎',
+      '🥸', '🤩', '🥳', '😏', '😒', '😞', '😔', '😟', '😕', '🙁', '☹️', '😣',
+      '😖', '😫', '😩', '🥺', '😢', '😭', '😤', '😠', '😡', '🤬', '🤯', '😳',
+      '🥵', '🥶', '😱', 'scared', '😨', '😰', '😥', '😓', '🤗', '🤔', '🤭', '🤫',
+      '🤥', '😶', '😐', '😑', '😬', '🙄', '😯', '😦', '😧', '😮', '😲', '🥱',
+      '😴', '🤤', '😪', '😵', '🤐', '🥴', '🤢', '🤮', 'sneezing', '😷', '🤒', '🤕',
+      '🤑', '🤠', '😈', '👿', 'ww', '👹', '👺', '🤡', '💩', '👻', '💀', '☠️',
+      '👽', '👾', '🤖', '🎃', '😺', '😸', '😹', '😻', '😼', '😽', '🙀', '😿', '😾',
+      '🤲', '👐', '🙌', '👏', '🙏', '🤝', '👍', '👎', '👊', '✊', '🤛', '🤜',
+      '🤞', '✌️', '🤟', '🤘', '👌', '🤌', '🤏', '👈', '👉', '👆', '👇', '☝️',
+      '✋', '🤚', '🖐️', '🖖', '👋', '🤙', '💪', '🦾', '🖕', '✍️', '🤳', '💅',
+      'legs', '🦵', '🦶', '👂', '🦻', '👃', '🧠', '🫀', '🫁', '🦷', '🦴', '👀',
+      '👁️', '👅', '👄', '💋', '👶', '🧒', '👦', '👧', '🧑', '👱', '👨', '🧔',
+    ],
   },
   food: {
     label: 'Food',
-   icon: 'restaurant-outline',
-    emojis: ['🍕', '🍔', '🍜', '🍱', '🍦', '🍰', '☕', '🥗', '🍩', '🍪', '🥐', '🥤'],
+    icon: 'restaurant-outline' as const,
+    emojis: [
+      '🍕', '🍔', '🍜', '🍱', '🍦', '🍰', '☕', '🥗', '🍩', '🍪', '🥐', '🥤',
+      '🍏', '🍎', '🍐', '🍊', '🍋', '🍌', '🍉', '🍇', '🍓', '🫐', '🍈', '🍒',
+      '🍑', '🥭', '🍍', '🥥', '🥝', '🍅', '🍆', '🥑', '🥦', '�', '🥒', '🌶️',
+      '🫑', '🌽', '🥕', '🫒', '🧄', '🧅', '🥔', '🍠', '�🥐', '🥯', '🍞', '🥖',
+      '🥨', '🧀', '🥚', '🍳', '🧈', '🥞', '🧇', '🥓', '🥩', '🍗', '🍖', '🦴',
+      '🌭', '🍟', '🥪', '🌮', '🌯', '🫔', '🥙', '🧆', '🥚', '🥘', '🍲', '🫕',
+      '🥣', '🥗', '🍿', '🧈', '🧂', '🥫', '🍱', '🍘', '🍙', '🍚', '🍛', '🍜',
+      '🍝', '🍠', '🍢', '🍣', '🍤', '🍥', '🥮', '🍡', '🥟', '🥠', '🥡', '🦀',
+      '🦞', '🦐', '🦑', '🦪', '🍦', '🍧', '🍨', '🍩', '🍪', '🎂', '🍰', '🧁',
+      '🥧', '🍫', '🍬', '🍭', '🍮', '🍯', '🍼', '�', '☕', '🫖', '🍵', '🍶',
+      '🍾', '🍷', '🍸', '🍹', '🍺', '🍻', '🥂', '🥃', '�🥤', '🧃', '🧉', '🧊',
+      '🥢', '🍽️', '🍴', '🥄', '🔪', '🏺'
+    ],
   },
   travel: {
     label: 'Travel',
-    icon: 'airplane-outline',
-    emojis: ['✈️', '🚗', '🚇', '🚲', '🏠', '🏖️', '⛰️', '🗺️', '🎒', '🧳', '🚀', '⛵'],
+    icon: 'airplane-outline' as const,
+    emojis: [
+      '✈️', '🚗', '🚇', '🚲', '🏠', '🏖️', '⛰️', '🗺️', '🎒', '🧳', '🚀', '⛵',
+      '🌍', '🌎', '🌏', '🌐', '⛺', '🏕️', '🏜️', '🏝️', '🏞️', '🏟️', '🏛️', '🏗️',
+      '🧱', '🪨', '🪵', '🛖', '🏘️', '🏚️', '🏠', '🏡', '🏢', '🏣', '🏤', '🏥',
+      '🏦', '🏨', '🏪', '🏫', '🏬', '🏭', '🏯', '🏰', '💒', '🗼', '🗽', '⛪',
+      '🕌', '🛕', '🕍', '⛩️', '🕋', '⛲', '⛺', '🌁', '🌃', '🏙️', '🌄', '🌅',
+      '🌆', '🌇', '🌉', '♨️', '🎠', '🎡', '🎢', '💈', '🎪', '🚂', '🚃', '🚄',
+      '🚅', '🚆', '🚇', '🚈', '🚉', '🚊', '🚝', '🚞', '🚋', '🚌', '🚍', '🚎',
+      '🚐', '🚑', '🚒', '🚓', '🚔', '🚕', '🚖', '🚗', '🚘', '🚙', '🛻', '🚚',
+      '🚛', '🚜', '🏎️', '🏍️', '🛵', '🦽', '🦼', '🛺', '🚲', '🛴', '🛹', '🛼',
+      '🚏', '🛣️', '🛤️', '🛢️', '⛽', '🚨', '🚥', '🚦', '🛑', '🚧', '⚓', '⛵',
+      '🛶', '🚤', '🛳️', '⛴️', '🛥️', '🚢', '✈️', '🛩️', '🛫', '🛬', '🪂', '💺',
+      '🚁', '🚟', '🚠', '🚡', '🛰️', '🚀', '🛸'
+    ],
   },
   activities: {
     label: 'Activities',
-    icon: 'football-outline',
-    emojis: ['⚽', '🎮', '🎬', '🎵', '📚', '💼', '🎨', '🏋️', '🎭', '🎪', '🎯', '🎳'],
+    icon: 'football-outline' as const,
+    emojis: [
+      '⚽', '🎮', '🎬', '🎵', '📚', '💼', '🎨', '🏋️', '🎭', '🎪', '🎯', '🎳',
+      '🏈', '🏉', '🎾', '🥎', '⚾', '🏏', '🏑', '🏒', '🥍', '🏓', '🏸', '🥊',
+      '🥋', '🥅', '⛳', '⛸️', '🎣', '🤿', '🎽', '🎿', '🛷', '🥌', '🎯', '🪀',
+      '🪁', '🎱', '🔮', '🪄', '🧿', '🎮', '🕹️', '🎰', '🎲', '🧩', '🧸', '🪅',
+      '🪆', '♠️', '♥️', '♦️', '♣️', '♟️', '🃏', '🀄', '🎴', '🎭', '🖼️', '🎨',
+      '🧵', '🪡', '🧶', '🪢', '🧣', '🧤', '🧥', '🧦', '👗', '👘', '🥻', '🩴',
+      '🩱', '🩲', '🩳', '👙', '👚', '👛', '👜', '👝', '🎒', '👞', '👟', '🥾',
+      '🥿', '👠', '👡', '🩰', '👢', '👑', '👒', '🎩', '🎓', '🧢', '🪖', '⛑️',
+      '📿', '💄', '💍', '💎'
+    ],
   },
   objects: {
     label: 'Objects',
-    icon: 'cube-outline',
-    emojis: ['💰', '💳', '🎁', '🛒', '📱', '💻', '🔑', '🏆', '💎', '🔔', '📦', '🎈'],
+    icon: 'cube-outline' as const,
+    emojis: [
+      '💰', '💳', '🎁', '🛒', '📱', '💻', '🔑', '🏆', '💎', '🔔', '📦', '🎈',
+      '⌚', '📱', '📲', '💻', '⌨️', '🖥️', '🖨️', '🖱️', '🖲️', '🕹️', '🗜️', '💽',
+      '💾', '💿', '📀', '📼', '📷', '📸', '📹', '🎥', '📽️', '🎞️', '📞', '☎️',
+      '📟', '📠', '📺', '📻', '🎙️', '🎚️', '🎛️', '🧭', '⏱️', '⏲️', '⏰', '🕰️',
+      '⌛', '⏳', '📡', '🔋', '🔌', '💡', '🔦', '🕯️', '🪔', '🧯', '🛢️', '💸',
+      '💵', '💴', '💶', '💷', '🪙', '💰', '💳', '💎', '⚖️', '🪜', '🧰', '🪛',
+      '🔧', '🔨', '⚒️', '🛠️', '⛏️', '🪚', '⚙️', '🔩', '⛓️', '🪝', '🪜', '🧱',
+      '🪨', '🪵', '🔫', '💣', '🧨', '🪓', '🔪', '🗡️', '⚔️', '🛡️', '🚬', '⚰️',
+      '🪦', '⚱️', '🏺', '🔮', '📿', '🧿', '💈', '⚗️', '🔭', '🔬', '🕳️', '🩹',
+      '🩺', '💊', '💉', '🩸', '🧬', '🦠', '🧫', '🧪', '🌡️', '🧹', '🪠', '🧺',
+      '🧻', '🚽', '🚰', '🚿', '🛁', '🛀', '🧼', '🪥', '🪒', '🧽', '🪣', '🧴',
+      '🛎️', '🔑', '🗝️', '🚪', '🪑', '🛋️', '🛏️', '🛌', '🧸', '🪆', '🖼️', '🪞',
+      '🪟', '🛍️', '🛒', '🎁', '🎈', '🎏', '🎀', '🪄', '🪅', '🎊', '🎉', '🎎',
+      '🏮', '🎐', '🧧', '✉️', '📩', '📨', '📧', '💌', '📥', '📤', '📦', '🏷️',
+      '🪧', '📪', '📫', '📬', '📭', '📮', '📯', '📜', '📃', '📄', '📑', '🧾',
+      '📊', '📈', '📉', '🗒️', '🗓️', '📆', '📅', '🗑️', '📇', '🗃️', '🗳️', '🗄️',
+      '📋', '📁', '📂', '🗂️', '🗞️', '📰', '📓', '📔', '📒', '📕', '📗', '📘',
+      '📙', '📚', '📖', '🔖', '🧷', '🔗', '📎', '🖇️', '📐', '📏', '🧮', '📌',
+      '📍', '✂️', '🖊️', '🖋️', '✒️', '🖌️', '🖍️', '📝', '✏️', '🔍', '🔎', '🔏',
+      '🔐', '🔒', '🔓'
+    ],
   },
 };
 
@@ -35,18 +113,82 @@ interface EmojiPickerProps {
   onSelect: (emoji: string) => void;
   onClose: () => void;
   visible: boolean;
+  context?: 'profile' | 'group' | 'expense' | 'default';
 }
 
-export default function EmojiPicker({ onSelect, onClose, visible }: EmojiPickerProps) {
+export default function EmojiPicker({ onSelect, onClose, visible, context = 'default' }: EmojiPickerProps) {
   const { colors, isDark } = useTheme();
-  const [selectedCategory, setSelectedCategory] = useState<keyof typeof EMOJI_CATEGORIES>('smileys');
+  
+  const [selectedCategory, setSelectedCategory] = useState<string>(
+     context !== 'default' ? 'featured' : 'smileys'
+  );
   const [searchQuery, setSearchQuery] = useState('');
 
-  const filteredEmojis = searchQuery
-    ? Object.values(EMOJI_CATEGORIES)
+  // Dynamic categories based on context
+  const categories = useMemo(() => {
+    let featured: string[] = [];
+    let featuredIcon: any = 'star-outline';
+    let featuredLabel = 'Featured';
+
+    if (context === 'profile') {
+      featuredLabel = 'Avatars';
+      featuredIcon = 'person-outline' as const;
+      featured = [
+        '🧔', '👨', '🧑', '👱', '👩', '🧓', '👴', '👵', '👶', '👼', '🤴', '👸',
+        '🕵️', '👮', '👷', '💂', '🦸', '🦹', '🧙', '🧚', '🧛', '🧜', '🧝', '🧞',
+        '🧟', '💆', '💇', '🚶', '🏃', '💃', '🕺', '🕴️', '👯', '🧘', '🏄', '🏊'
+      ];
+    } else if (context === 'group') {
+      featuredLabel = 'Groups';
+      featuredIcon = 'people-outline' as const;
+      featured = [
+        '🏠', '✈️', '🍕', '🍻', '🎓', '💼', '🏖️', '🎟️', '🎬', '⛺', '🚗', '🎁',
+        '⚽', '🎮', '💡', '💰', '🛒', '🧘', '🏋️', '🚴', '🎉', '🥂', '🍼', '🐾'
+      ];
+    } else if (context === 'expense') {
+      featuredLabel = 'Spending';
+      featuredIcon = 'cash-outline' as const;
+      featured = [
+        '💸', '💰', '💳', '🧾', '🛒', '🛍️', '🎁', '🎫', '🚕', '⛽', '🍽️', '🍻',
+        '🍕', '🍔', '☕', '💊', '🏠', '💡', '🔌', '🚿', '📱', '💻', '🎮', '📚'
+      ];
+    }
+
+    const baseCats = { ...EMOJI_CATEGORIES };
+    
+    // Prepend Featured category if context is specific
+    if (context !== 'default' && featured.length > 0) {
+      return {
+        featured: {
+          label: featuredLabel,
+          icon: featuredIcon,
+          emojis: featured,
+        },
+        ...baseCats
+      };
+    }
+    
+    return baseCats;
+  }, [context]);
+
+  // Reset category when visible changes or context changes
+  useEffect(() => {
+    if (visible) {
+      setSelectedCategory(context !== 'default' ? 'featured' : 'smileys');
+      setSearchQuery('');
+    }
+  }, [visible, context]);
+
+  const filteredEmojis = useMemo(() => {
+    if (searchQuery) {
+      // Search across ALL base categories (ignoring duplicate featured for search)
+      return Object.values(EMOJI_CATEGORIES)
         .flatMap((cat) => cat.emojis)
-        .filter((emoji) => emoji.includes(searchQuery))
-    : EMOJI_CATEGORIES[selectedCategory].emojis;
+        .filter((emoji) => emoji.includes(searchQuery));
+    }
+    // @ts-ignore
+    return categories[selectedCategory]?.emojis || [];
+  }, [selectedCategory, searchQuery, categories]);
 
   const styles = StyleSheet.create({
     overlay: {
@@ -55,13 +197,29 @@ export default function EmojiPicker({ onSelect, onClose, visible }: EmojiPickerP
       justifyContent: 'flex-end',
     },
     container: {
+      width: '100%',
       backgroundColor: colors.background,
       borderTopLeftRadius: 24,
       borderTopRightRadius: 24,
-      paddingTop: 20,
-      paddingBottom: 40,
-      minHeight: '75%',
-      maxHeight: '85%',
+      paddingTop: 12,
+      paddingBottom: Platform.OS === 'ios' ? 40 : 20,
+      height: '80%',
+      shadowColor: "#000",
+      shadowOffset: {
+        width: 0,
+        height: -4,
+      },
+      shadowOpacity: 0.1,
+      shadowRadius: 10,
+      elevation: 10,
+    },
+    handle: {
+      width: 40,
+      height: 4,
+      backgroundColor: colors.border,
+      borderRadius: 2,
+      alignSelf: 'center',
+      marginBottom: 16,
     },
     header: {
       flexDirection: 'row',
@@ -71,21 +229,23 @@ export default function EmojiPicker({ onSelect, onClose, visible }: EmojiPickerP
       marginBottom: 16,
     },
     title: {
-      fontSize: 18,
+      fontSize: 20,
       fontWeight: 'bold',
       color: colors.text,
     },
     closeBtn: {
-      height: 32,
-      width: 32,
-      borderRadius: 16,
+      height: 36,
+      width: 36,
+      borderRadius: 18,
       backgroundColor: colors.surface,
       alignItems: 'center',
       justifyContent: 'center',
+      borderWidth: 1,
+      borderColor: colors.border,
     },
     searchContainer: {
       backgroundColor: colors.surface,
-      borderRadius: 12,
+      borderRadius: 16,
       paddingHorizontal: 16,
       paddingVertical: 12,
       marginHorizontal: 20,
@@ -98,140 +258,137 @@ export default function EmojiPicker({ onSelect, onClose, visible }: EmojiPickerP
     searchInput: {
       flex: 1,
       color: colors.text,
-      fontSize: 14,
-      marginLeft: 8,
+      fontSize: 16,
+      marginLeft: 12,
     },
     categoryTabs: {
       flexDirection: 'row',
-      paddingHorizontal: 20,
+      paddingHorizontal: 16,
       marginBottom: 16,
-      gap: 8,
     },
     categoryTab: {
-      paddingHorizontal: 16,
+      alignItems: 'center',
       paddingVertical: 8,
+      paddingHorizontal: 16,
       borderRadius: 20,
+      marginRight: 8,
       borderWidth: 1,
+      borderColor: 'transparent',
     },
     categoryTabActive: {
-      backgroundColor: colors.primary,
+      backgroundColor: colors.surfaceActive,
       borderColor: colors.primary,
     },
     categoryTabInactive: {
-      backgroundColor: colors.surface,
-      borderColor: colors.border,
+      backgroundColor: 'transparent',
     },
-    categoryTabText: {
-      fontSize: 12,
-      fontWeight: 'bold',
-    },
-    emojiGrid: {
-      paddingHorizontal: 20,
-    },
-    emojiRow: {
-      flexDirection: 'row',
-      marginBottom: 8,
-    },
-    emojiBtn: {
-      flex: 1,
-      aspectRatio: 1,
+    emojiItem: {
+      width: ITEM_SIZE,
+      height: ITEM_SIZE,
       alignItems: 'center',
       justifyContent: 'center',
-      marginHorizontal: 4,
-      borderRadius: 12,
-      backgroundColor: colors.surface,
-      minHeight: 56,
     },
     emojiText: {
       fontSize: 32,
     },
   });
 
-  const handleSelect = (emoji: string) => {
-    onSelect(emoji);
-    onClose();
-  };
-
-  // Group emojis into rows of 6
-  const emojiRows = [];
-  for (let i = 0; i < filteredEmojis.length; i += 6) {
-    emojiRows.push(filteredEmojis.slice(i, i + 6));
-  }
+  const renderEmoji = ({ item }: { item: string }) => (
+    <TouchableOpacity
+      style={styles.emojiItem}
+      onPress={() => {
+        onSelect(item);
+        onClose();
+      }}
+      activeOpacity={0.6}
+    >
+      <Text style={styles.emojiText}>{item}</Text>
+    </TouchableOpacity>
+  );
 
   return (
     <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
       <TouchableOpacity style={styles.overlay} activeOpacity={1} onPress={onClose}>
         <TouchableOpacity activeOpacity={1} onPress={(e) => e.stopPropagation()}>
           <View style={styles.container}>
+            {/* Drag Handle */}
+            <View style={styles.handle} />
+
             <View style={styles.header}>
-              <Text style={styles.title}>Pick an emoji</Text>
+              <Text style={styles.title}>Pick an Emoji</Text>
               <TouchableOpacity onPress={onClose} style={styles.closeBtn}>
                 <Ionicons name="close" size={20} color={colors.textSecondary} />
               </TouchableOpacity>
             </View>
 
             <View style={styles.searchContainer}>
-              <Ionicons name="search" size={16} color={colors.textSecondary} />
+              <Ionicons name="search" size={20} color={colors.textSecondary} />
               <TextInput
                 style={styles.searchInput}
                 placeholder="Search emojis..."
                 placeholderTextColor={colors.textMuted}
                 value={searchQuery}
                 onChangeText={setSearchQuery}
+                autoCorrect={false}
               />
               {searchQuery.length > 0 && (
                 <TouchableOpacity onPress={() => setSearchQuery('')}>
-                  <Ionicons name="close-circle" size={18} color={colors.textSecondary} />
+                  <Ionicons name="close-circle" size={20} color={colors.textSecondary} />
                 </TouchableOpacity>
               )}
             </View>
 
             {!searchQuery && (
-              <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.categoryTabs}>
-                {(Object.keys(EMOJI_CATEGORIES) as Array<keyof typeof EMOJI_CATEGORIES>).map((key) => {
-                  const cat = EMOJI_CATEGORIES[key];
-                  const isActive = selectedCategory === key;
-                  return (
-                    <TouchableOpacity
-                      key={key}
-                      onPress={() => setSelectedCategory(key)}
-                      style={[styles.categoryTab, isActive ? styles.categoryTabActive : styles.categoryTabInactive]}
-                    >
-                      <Text
+              <View style={{ height: 50, marginBottom: 8 }}>
+                <FlatList
+                  horizontal
+                  showsHorizontalScrollIndicator={false}
+                  data={Object.keys(EMOJI_CATEGORIES) as Array<keyof typeof EMOJI_CATEGORIES>}
+                  contentContainerStyle={{ paddingHorizontal: 20 }}
+                  keyExtractor={(item) => item}
+                  renderItem={({ item: key }) => {
+                    const cat = EMOJI_CATEGORIES[key];
+                    const isActive = selectedCategory === key;
+                    return (
+                      <TouchableOpacity
+                        onPress={() => setSelectedCategory(key)}
                         style={[
-                          styles.categoryTabText,
-                          { color: isActive ? '#fff' : colors.textSecondary },
+                          styles.categoryTab,
+                          isActive ? styles.categoryTabActive : styles.categoryTabInactive
                         ]}
                       >
-                        {cat.label}
-                      </Text>
-                    </TouchableOpacity>
-                  );
-                })}
-              </ScrollView>
+                        <Ionicons 
+                          name={cat.icon} 
+                          size={20} 
+                          color={isActive ? colors.primary : colors.textSecondary} 
+                          style={{ marginBottom: 4 }}
+                        />
+                         <Text style={{ 
+                           fontSize: 10, 
+                           fontWeight: 'bold', 
+                           color: isActive ? colors.primary : colors.textSecondary 
+                         }}>
+                           {cat.label}
+                         </Text>
+                      </TouchableOpacity>
+                    );
+                  }}
+                />
+              </View>
             )}
 
-            <ScrollView style={styles.emojiGrid} showsVerticalScrollIndicator={false}>
-              {emojiRows.map((row, rowIndex) => (
-                <View key={rowIndex} style={styles.emojiRow}>
-                  {row.map((emoji, emojiIndex) => (
-                    <TouchableOpacity
-                      key={emojiIndex}
-                      style={styles.emojiBtn}
-                      onPress={() => handleSelect(emoji)}
-                      activeOpacity={0.7}
-                    >
-                      <Text style={styles.emojiText}>{emoji}</Text>
-                    </TouchableOpacity>
-                  ))}
-                  {/* Fill remaining slots if row is incomplete */}
-                  {row.length < 6 &&
-                    Array.from({ length: 6 - row.length }).map((_, i) => (
-                      <View key={`empty-${i}`} style={{ flex: 1 }} />
-                    ))}
-                </View>
-              ))}
-            </ScrollView>
+            <FlatList
+              data={filteredEmojis}
+              renderItem={renderEmoji}
+              keyExtractor={(item, index) => `${item}-${index}`}
+              numColumns={COLUMN_COUNT}
+              contentContainerStyle={{ paddingBottom: 40, paddingHorizontal: 10 }}
+              showsVerticalScrollIndicator={false}
+              keyboardShouldPersistTaps="handled"
+              initialNumToRender={50}
+              maxToRenderPerBatch={50}
+              windowSize={10}
+            />
           </View>
         </TouchableOpacity>
       </TouchableOpacity>

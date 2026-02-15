@@ -10,8 +10,16 @@ import { useTheme } from "@/contexts/ThemeContext";
 const BIOMETRIC_KEY = "splitsahise_biometric_enabled";
 const NOTIFICATIONS_KEY = "splitsahise_notifications_enabled";
 
+import { useAuthStore } from "@/store/authStore";
+import { apiPatch } from "@/lib/api";
+import CurrencySelector from "@/components/CurrencySelector";
+
 export default function PreferencesScreen() {
   const { themeMode, setThemeMode, colors, isDark } = useTheme();
+  const user = useAuthStore((s) => s.user);
+  const setUser = useAuthStore((s) => s.setUser);
+  const userCurrency = user?.currency || "INR";
+
   const [biometricAvailable, setBiometricAvailable] = useState(false);
   const [biometricType, setBiometricType] = useState<string>("Biometric");
   const [biometricEnabled, setBiometricEnabled] = useState(false);
@@ -23,6 +31,21 @@ export default function PreferencesScreen() {
     checkBiometricSupport();
     loadPreferences();
   }, []);
+
+  async function changeCurrency(currency: string) {
+    try {
+      if (!user) return;
+      // Optimistic update
+      const updatedUser = { ...user, currency };
+      await setUser(updatedUser);
+      
+      await apiPatch("/users/me", { currency });
+      Alert.alert("Currency Updated", `Your primary currency is now ${currency}`);
+    } catch (e) {
+      Alert.alert("Error", "Failed to update currency");
+      // Revert if needed, but for now simple alert
+    }
+  }
 
   async function checkBiometricSupport() {
     const compatible = await LocalAuthentication.hasHardwareAsync();
@@ -344,6 +367,27 @@ export default function PreferencesScreen() {
           </View>
         </View>
 
+        {/* Financial Section */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Financial</Text>
+          <View style={styles.card}>
+            <View style={[styles.row, styles.lastRow]}>
+              <View style={styles.rowIconContainer}>
+                <Ionicons name="wallet-outline" size={18} color={colors.primary} />
+              </View>
+              <View style={styles.rowContent}>
+                <Text style={styles.rowTitle}>Currency</Text>
+                <Text style={styles.rowSubtitle}>Primary display currency</Text>
+              </View>
+              <CurrencySelector 
+                selectedCurrency={userCurrency}
+                onSelect={changeCurrency}
+                compact={true}
+              />
+            </View>
+          </View>
+        </View>
+
         {/* App Section */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Appearance</Text>
@@ -427,7 +471,25 @@ export default function PreferencesScreen() {
               </View>
             </View>
             
-            <View style={[styles.row, styles.lastRow, { borderTopWidth: 1, borderTopColor: colors.border }]}>
+            {/* Language Modal (Simulated) */}
+            <TouchableOpacity 
+              style={[styles.row, styles.lastRow, { borderTopWidth: 1, borderTopColor: colors.border }]}
+              onPress={() => {
+                Alert.alert(
+                  "Select Language",
+                  "Choose your preferred language:",
+                  [
+                    { text: "English (Default)", onPress: () => {} },
+                    { text: "Hindi", onPress: () => Alert.alert("Coming Soon", "Hindi support is on the roadmap!") },
+                    { text: "Spanish", onPress: () => Alert.alert("Coming Soon", "Spanish support is on the roadmap!") },
+                    { text: "French", onPress: () => Alert.alert("Coming Soon", "French support is on the roadmap!") },
+                    { text: "German", onPress: () => Alert.alert("Coming Soon", "German support is on the roadmap!") },
+                    { text: "Japanese", onPress: () => Alert.alert("Coming Soon", "Japanese support is on the roadmap!") },
+                    { text: "Cancel", style: "cancel" }
+                  ]
+                );
+              }}
+            >
               <View style={styles.rowIconContainer}>
                 <Ionicons name="language" size={18} color={colors.textSecondary} />
               </View>
@@ -436,7 +498,7 @@ export default function PreferencesScreen() {
                 <Text style={styles.rowSubtitle}>English</Text>
               </View>
               <Ionicons name="chevron-forward" size={18} color={colors.textTertiary} />
-            </View>
+            </TouchableOpacity>
           </View>
         </View>
 

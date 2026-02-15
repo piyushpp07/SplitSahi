@@ -240,6 +240,7 @@ export default function RegisterScreen() {
         visible={showEmojiPicker}
         onSelect={(selected) => setEmoji(selected)}
         onClose={() => setShowEmojiPicker(false)}
+        context="profile"
       />
     </SafeAreaView>
   );
