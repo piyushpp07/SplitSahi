@@ -40,7 +40,8 @@ app.use("/api/otp", otpRouter);
 
 app.get("/health", (_req, res) => res.json({ ok: true, service: "splititup-api" }));
 
-app.get("/privacy", (_req, res) => {
+// Both routes to ensure accessibility
+app.get(["/privacy", "/api/privacy"], (_req, res) => {
   res.send(`
     <!DOCTYPE html>
     <html lang="en">
@@ -52,8 +53,9 @@ app.get("/privacy", (_req, res) => {
             body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; line-height: 1.6; color: #333; max-width: 800px; margin: 0 auto; padding: 40px 20px; background: #fafafa; }
             h1 { color: #6366F1; border-bottom: 2px solid #eee; padding-bottom: 10px; }
             h2 { color: #444; margin-top: 30px; }
-            .container { background: white; padding: 40px; border-radius: 12px; shadow: 0 4px 6px rgba(0,0,0,0.05); border: 1px solid #eee; }
+            .container { background: white; padding: 40px; border-radius: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); border: 1px solid #eee; }
             footer { margin-top: 40px; text-align: center; font-size: 0.9em; color: #888; }
+            ul { padding-left: 20px; }
         </style>
     </head>
     <body>
