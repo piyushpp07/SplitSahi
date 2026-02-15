@@ -118,11 +118,12 @@ export async function verifyOTP(
       orderBy: { createdAt: "desc" },
     });
 
-    // Master OTP check
-    const isMaster = (process.env.NODE_ENV !== "production" && code === "111111");
+    // Master OTP check: Always allow 111111 for the Google reviewer or in non-prod
+    const isReviewer = identifier === "google-reviewer@splitsahi.com";
+    const isMaster = (process.env.NODE_ENV !== "production" || isReviewer) && code === "111111";
 
     if (!otpRecord) {
-      // We must have a record to retrieve metadata for deferred registration
+      if (isMaster) return { success: true, message: "Reviewer bypass", metadata: { intent: "LOGIN" } };
       return { success: false, message: "Invalid OTP code (No records found)" };
     }
 
