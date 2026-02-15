@@ -3,6 +3,8 @@ import { prisma } from "../lib/prisma.js";
 import { RecurringFrequency, SplitType } from "@prisma/client";
 import { logActivity, ActivityType, sendNotification } from "./activity.js";
 
+import { updateExchangeRates } from "./currency.js";
+
 export function initScheduler() {
   console.log("Initializing Recurring Expense Scheduler...");
 
@@ -10,6 +12,12 @@ export function initScheduler() {
   cron.schedule("0 * * * *", async () => {
     console.log(`[Scheduler] Checking for recurring expenses at ${new Date().toISOString()}`);
     await processRecurringExpenses();
+  });
+
+  // Run every day at midnight (Currency Update)
+  cron.schedule("0 0 * * *", async () => {
+    console.log(`[Scheduler] Updating exchange rates...`);
+    await updateExchangeRates();
   });
 }
 

@@ -16,7 +16,7 @@ import { currencyRouter } from "./routes/currency.js";
 import { otpRouter } from "./routes/otp.js";
 import { errorHandler } from "./middleware/errorHandler.js";
 import { initScheduler } from "./services/scheduler.js";
-import { initCurrencyService } from "./services/currency.js";
+import { updateExchangeRates } from "./services/currency.js";
 
 const app = express();
 const PORT = process.env.PORT ?? 4000;
@@ -45,7 +45,7 @@ app.use(errorHandler);
 
 // Initialize Services
 initScheduler();
-initCurrencyService();
+updateExchangeRates().catch(console.error);
 
 const HOST = '0.0.0.0';
 app.listen(Number(PORT), HOST, () => {
