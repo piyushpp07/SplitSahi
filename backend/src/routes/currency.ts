@@ -16,13 +16,13 @@ currencyRouter.get("/", (req, res) => {
 currencyRouter.get("/rate", async (req, res, next) => {
   try {
     const { from, to } = req.query;
-    
+
     if (!from || !to) {
       throw new AppError(400, "Missing 'from' or 'to' currency parameter", "VALIDATION_ERROR");
     }
 
     const rate = await getExchangeRate(from as string, to as string);
-    
+
     res.json({
       from,
       to,
@@ -38,7 +38,7 @@ currencyRouter.get("/rate", async (req, res, next) => {
 currencyRouter.get("/convert", async (req, res, next) => {
   try {
     const { amount, from, to } = req.query;
-    
+
     if (!amount || !from || !to) {
       throw new AppError(400, "Missing required parameters: amount, from, to", "VALIDATION_ERROR");
     }
@@ -50,7 +50,7 @@ currencyRouter.get("/convert", async (req, res, next) => {
 
     const converted = await convertCurrency(amountNum, from as string, to as string);
     const rate = await getExchangeRate(from as string, to as string);
-    
+
     res.json({
       original: {
         amount: amountNum,
@@ -73,9 +73,14 @@ currencyRouter.use(authMiddleware);
 currencyRouter.use(requireUser);
 
 // Update user's preferred currency
-currencyRouter.patch("/preference", async (req: AuthRequest, res, next) => {
+interface CustomRequest extends Router {
+  userEntity?: { id: string };
+  body: { currency?: string };
+}
+
+currencyRouter.patch("/preference", async (req: any, res, next) => {
   try {
-    const userId = (req as AuthRequest & { userEntity: { id: string } }).userEntity.id;
+    const userId = req.userEntity?.id;
     const { currency } = req.body;
 
     if (!currency) {
