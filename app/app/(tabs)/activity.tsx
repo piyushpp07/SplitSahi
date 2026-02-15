@@ -27,6 +27,7 @@ type FilterType = "all" | "expenses" | "settlements";
 export default function ActivityScreen() {
   const { colors, isDark } = useTheme();
   const userId = useAuthStore((s) => s.user?.id);
+  const userCurrency = useAuthStore((s) => s.user?.currency);
   const [filter, setFilter] = useState<FilterType>("all");
   const [search, setSearch] = useState("");
   const [showSearch, setShowSearch] = useState(false);
@@ -390,7 +391,12 @@ export default function ActivityScreen() {
                   {(isAdded || isSettlement) && amount > 0 && (
                     <View style={styles.amountContainer}>
                       <Text style={[styles.amount, { color: isSettlement ? colors.success : colors.text }]}>
-                        ₹{amount.toFixed(0)}
+                        {new Intl.NumberFormat('en-US', {
+                          style: 'currency',
+                          currency: item.data.currency || userCurrency || 'INR',
+                          minimumFractionDigits: 0,
+                          maximumFractionDigits: 0,
+                        }).format(amount)}
                       </Text>
                       {isAdded && item.data.category && (
                         <Text style={styles.category}>{item.data.category}</Text>

@@ -23,6 +23,7 @@ interface Expense {
   id: string;
   title: string;
   totalAmount: number;
+  currency?: string;
   category: string;
   createdAt: string;
   creator: { id: string; name: string };
@@ -33,8 +34,20 @@ export default function GroupDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const queryClient = useQueryClient();
   const currentUserId = useAuthStore((s) => s.user?.id);
+  const userCurrency = useAuthStore((s) => s.user?.currency) || "INR";
   const [showMembers, setShowMembers] = useState(false);
   const [showExpenses, setShowExpenses] = useState(true);
+  
+  function formatCurrency(amount: number, currencyCode: string = "INR") {
+    return new Intl.NumberFormat('en-US', {
+      style: 'currency',
+      currency: currencyCode,
+      minimumFractionDigits: 0,
+       maximumFractionDigits: 0,
+    }).format(amount);
+  }
+  
+  // ... (inside render)
 
   useFocusEffect(
     useCallback(() => {
@@ -250,7 +263,7 @@ export default function GroupDetailScreen() {
                         </Text>
                       </View>
                       <View style={{ alignItems: 'flex-end' }}>
-                        <Text style={{ color: colors.text, fontWeight: 'bold', fontSize: 14 }}>₹{Number(exp.totalAmount).toFixed(0)}</Text>
+                        <Text style={{ color: colors.text, fontWeight: 'bold', fontSize: 14 }}>{formatCurrency(Number(exp.totalAmount), exp.currency || 'INR')}</Text>
                         {(exp.creator?.id === currentUserId || isAdmin) && (
                           <TouchableOpacity 
                             onPress={() => handleDeleteExpense(exp.id, exp.title)}
@@ -300,8 +313,18 @@ export default function GroupDetailScreen() {
 function GroupBalances({ groupId, groupData }: { groupId: string, groupData: any }) {
   const { colors } = useTheme();
   const currentUserId = useAuthStore((s) => s.user?.id);
+  const userCurrency = useAuthStore((s) => s.user?.currency) || "INR";
   const [showAll, setShowAll] = useState(false);
   const [useSimplified, setUseSimplified] = useState(false);
+  
+  function formatCurrency(amount: number, currencyCode: string = "INR") {
+    return new Intl.NumberFormat('en-US', {
+      style: 'currency',
+      currency: currencyCode,
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 0,
+    }).format(amount);
+  }
   
   // Regular dashboard data
   const { data: dashboardData } = useQuery({
@@ -329,11 +352,11 @@ function GroupBalances({ groupId, groupData }: { groupId: string, groupData: any
       <View style={{ flexDirection: 'row', gap: 12, marginBottom: 24 }}>
           <View style={{ flex: 1, backgroundColor: colors.surface, borderRadius: 16, padding: 16, borderWidth: 1, borderColor: colors.error }}>
              <Text style={{ color: colors.error, fontSize: 12, fontWeight: 'bold' }}>You Owe</Text>
-             <Text style={{ color: colors.error, fontSize: 24, fontWeight: 'bold', marginTop: 4 }}>₹{Math.abs(totalOwes).toFixed(0)}</Text>
+             <Text style={{ color: colors.error, fontSize: 24, fontWeight: 'bold', marginTop: 4 }}>{formatCurrency(Math.abs(totalOwes), userCurrency)}</Text>
           </View>
           <View style={{ flex: 1, backgroundColor: colors.surface, borderRadius: 16, padding: 16, borderWidth: 1, borderColor: colors.success }}>
              <Text style={{ color: colors.success, fontSize: 12, fontWeight: 'bold' }}>You are owed</Text>
-             <Text style={{ color: colors.success, fontSize: 24, fontWeight: 'bold', marginTop: 4 }}>₹{Math.abs(totalOwed).toFixed(0)}</Text>
+             <Text style={{ color: colors.success, fontSize: 24, fontWeight: 'bold', marginTop: 4 }}>{formatCurrency(Math.abs(totalOwed), userCurrency)}</Text>
           </View>
       </View>
 
@@ -394,7 +417,7 @@ function GroupBalances({ groupId, groupData }: { groupId: string, groupData: any
                </View>
 
                <View style={{ alignItems: 'flex-end', marginLeft: 12 }}>
-                  <Text style={{ fontSize: 16, fontWeight: 'bold', color: colors.success }}>₹{Number(t.amount).toFixed(0)}</Text>
+                  <Text style={{ fontSize: 16, fontWeight: 'bold', color: colors.success }}>{formatCurrency(Number(t.amount), userCurrency)}</Text>
                   
                   {isMeInvolved && (
                     <TouchableOpacity 

@@ -21,11 +21,13 @@ interface Currency {
 interface CurrencySelectorProps {
   selectedCurrency: string;
   onSelect: (currency: string) => void;
+  compact?: boolean;
 }
 
 export default function CurrencySelector({
   selectedCurrency,
   onSelect,
+  compact = false,
 }: CurrencySelectorProps) {
   const { colors, isDark } = useTheme();
   const [modalVisible, setModalVisible] = useState(false);
@@ -37,7 +39,30 @@ export default function CurrencySelector({
   // Fetch currencies from API - DISABLED per user request
   useEffect(() => {
     const defaultCurrencies: Currency[] = [
-      { code: "INR", symbol: "₹", name: "Indian Rupee (Default)" },
+      { code: "INR", symbol: "₹", name: "Indian Rupee" },
+      { code: "USD", symbol: "$", name: "US Dollar" },
+      { code: "EUR", symbol: "€", name: "Euro" },
+      { code: "GBP", symbol: "£", name: "British Pound" },
+      { code: "JPY", symbol: "¥", name: "Japanese Yen" },
+      { code: "AUD", symbol: "A$", name: "Australian Dollar" },
+      { code: "CAD", symbol: "C$", name: "Canadian Dollar" },
+      { code: "CHF", symbol: "Fr", name: "Swiss Franc" },
+      { code: "CNY", symbol: "¥", name: "Chinese Yuan" },
+      { code: "SEK", symbol: "kr", name: "Swedish Krona" },
+      { code: "NZD", symbol: "NZ$", name: "New Zealand Dollar" },
+      { code: "AED", symbol: "د.إ", name: "UAE Dirham" },
+      { code: "SGD", symbol: "S$", name: "Singapore Dollar" },
+      { code: "MYR", symbol: "RM", name: "Malaysian Ringgit" },
+      { code: "THB", symbol: "฿", name: "Thai Baht" },
+      { code: "KRW", symbol: "₩", name: "South Korean Won" },
+      { code: "RUB", symbol: "₽", name: "Russian Ruble" },
+      { code: "ZAR", symbol: "R", name: "South African Rand" },
+      { code: "BRL", symbol: "R$", name: "Brazilian Real" },
+      { code: "MXN", symbol: "Mex$", name: "Mexican Peso" },
+      { code: "HKD", symbol: "HK$", name: "Hong Kong Dollar" },
+      { code: "IDR", symbol: "Rp", name: "Indonesian Rupiah" },
+      { code: "TRY", symbol: "₺", name: "Turkish Lira" },
+      { code: "SAR", symbol: "﷼", name: "Saudi Riyal" },
     ];
     setCurrencies(defaultCurrencies);
     setFilteredCurrencies(defaultCurrencies);
@@ -67,7 +92,11 @@ export default function CurrencySelector({
     <>
       <TouchableOpacity
         onPress={() => setModalVisible(true)}
-        style={{
+        style={compact ? {
+          flexDirection: "row",
+          alignItems: "center",
+          paddingVertical: 4,
+        } : {
           flexDirection: "row",
           alignItems: "center",
           backgroundColor: isDark ? "#1e293b" : "#F3F4F6",
@@ -78,20 +107,22 @@ export default function CurrencySelector({
           borderColor: isDark ? "#334155" : "#E5E7EB",
         }}
       >
-        <Text style={{ fontSize: 20, marginRight: 8 }}>
-          {selectedCurrencyData?.symbol || "₹"}
+        <Text style={{ fontSize: compact ? 24 : 20, marginRight: compact ? 4 : 8, fontWeight: compact ? 'bold' : 'normal', color: colors.primary }}>
+          {selectedCurrencyData?.symbol || selectedCurrency}
         </Text>
-        <Text
-          style={{
-            flex: 1,
-            fontSize: 16,
-            fontWeight: "600",
-            color: colors.text,
-          }}
-        >
-          {selectedCurrency}
-        </Text>
-        <Ionicons name="chevron-down" size={20} color={colors.textSecondary} />
+        {!compact && (
+          <Text
+            style={{
+              flex: 1,
+              fontSize: 16,
+              fontWeight: "600",
+              color: colors.text,
+            }}
+          >
+            {selectedCurrency}
+          </Text>
+        )}
+        <Ionicons name="chevron-down" size={compact ? 16 : 20} color={colors.textSecondary} />
       </TouchableOpacity>
 
       <Modal

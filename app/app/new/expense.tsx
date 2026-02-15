@@ -451,7 +451,9 @@ export default function AddExpenseScreen() {
           <View style={styles.section}>
             <Text style={styles.label}>How much?</Text>
             <View style={styles.inputContainer}>
-              <Text style={styles.currencySymbol}>₹</Text>
+              <View style={{ marginRight: 8, borderRightWidth: 1, borderRightColor: colors.border, paddingRight: 8 }}>
+                 <CurrencySelector selectedCurrency={currency} onSelect={setCurrency} compact={true} />
+              </View>
               <TextInput
                 style={styles.amountInput}
                 placeholder="0.00"
@@ -461,12 +463,6 @@ export default function AddExpenseScreen() {
                 keyboardType="numeric"
               />
             </View>
-          </View>
-
-          {/* Currency */}
-          <View style={styles.section}>
-            <Text style={styles.label}>Currency</Text>
-            <CurrencySelector selectedCurrency={currency} onSelect={setCurrency} />
           </View>
 
           {/* Date Picker */}

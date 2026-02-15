@@ -277,6 +277,7 @@ export default function CreateGroupScreen() {
         visible={showEmojiPicker}
         onSelect={(selected) => setEmoji(selected)}
         onClose={() => setShowEmojiPicker(false)}
+        context="group"
       />
     </SafeAreaView>
   );

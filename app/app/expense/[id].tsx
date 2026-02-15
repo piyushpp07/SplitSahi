@@ -240,6 +240,14 @@ export default function ExpenseDetailScreen() {
     }
   });
 
+  function formatCurrency(amount: number, currencyCode: string = "INR") {
+    return new Intl.NumberFormat('en-US', {
+      style: 'currency',
+      currency: currencyCode,
+      minimumFractionDigits: 2,
+    }).format(amount);
+  }
+
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
       <KeyboardAvoidingView 
@@ -292,7 +300,7 @@ export default function ExpenseDetailScreen() {
           {/* Amount */}
           <View style={[styles.card, { marginBottom: 24 }]}>
             <Text style={styles.label}>Total Amount</Text>
-            <Text style={styles.amountText}>₹{Number(expense.totalAmount).toFixed(2)}</Text>
+            <Text style={styles.amountText}>{formatCurrency(expense.totalAmount, expense.currency)}</Text>
           </View>
 
           {/* Category */}
@@ -366,7 +374,7 @@ export default function ExpenseDetailScreen() {
                       {isMe ? "You" : p.user.name}
                     </Text>
                     <Text style={{ color: colors.success, fontWeight: 'bold' }}>
-                      {canSeeAmount ? `₹${Number(p.amountPaid).toFixed(2)}` : "₹ ••••"}
+                      {canSeeAmount ? formatCurrency(p.amountPaid, expense.currency) : "••••"}
                     </Text>
                   </View>
                 );
@@ -395,7 +403,7 @@ export default function ExpenseDetailScreen() {
                         <Text style={{ color: colors.textSecondary, fontSize: 10, marginBottom: 2 }}>{Number(s.percentage).toFixed(0)}%</Text>
                       )}
                       <Text style={{ color: colors.error, fontWeight: 'bold' }}>
-                        {canSeeAmount ? `₹${Number(s.amountOwed).toFixed(2)}` : "₹ ••••"}
+                        {canSeeAmount ? formatCurrency(s.amountOwed, expense.currency) : "••••"}
                       </Text>
                     </View>
                   </View>

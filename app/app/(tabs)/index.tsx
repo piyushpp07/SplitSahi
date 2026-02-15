@@ -27,6 +27,17 @@ export default function DashboardScreen() {
   const userId = useAuthStore((s) => s.user?.id);
   const userName = useAuthStore((s) => s.user?.name);
   const [settling, setSettling] = useState<string | null>(null);
+  const userCurrency = useAuthStore((s) => s.user?.currency) || "INR";
+
+  const formatCurrency = (amount: number) => {
+    return new Intl.NumberFormat('en-US', {
+      style: 'currency',
+      currency: userCurrency,
+      minimumFractionDigits: 0,
+       maximumFractionDigits: 0,
+    }).format(amount);
+  };
+  
   const [showSearch, setShowSearch] = useState(false);
   const [search, setSearch] = useState("");
   const [timeOfDay, setTimeOfDay] = useState("Good Morning");
@@ -535,7 +546,7 @@ export default function DashboardScreen() {
       <Text style={styles.balanceLabel}>Net Balance</Text>
       <View style={{flexDirection: 'row', alignItems: 'flex-end', justifyContent: 'space-between'}}>
         <Text style={[styles.balanceAmount, netBalance >= 0 ? styles.positive : styles.negative]}>
-          {netBalance >= 0 ? '+' : ''}₹{Math.abs(netBalance).toFixed(2)}
+          {netBalance >= 0 ? '+' : ''}{formatCurrency(Math.abs(netBalance)).replace(userCurrency !== "INR" && userCurrency !== "USD" ? userCurrency : '', '').trim()}
         </Text>
         {netBalance !== 0 && (
           <View style={{paddingBottom: 24}}>
@@ -553,7 +564,7 @@ export default function DashboardScreen() {
           </View>
           <View>
             <Text style={styles.balanceItemLabel}>You Owe</Text>
-            <Text style={styles.balanceItemValue}>₹{youOwe.toFixed(0)}</Text>
+            <Text style={styles.balanceItemValue}>{formatCurrency(youOwe)}</Text>
           </View>
         </View>
         <View style={styles.balanceItem}>
@@ -562,7 +573,7 @@ export default function DashboardScreen() {
           </View>
           <View>
             <Text style={styles.balanceItemLabel}>You Get</Text>
-            <Text style={styles.balanceItemValue}>₹{youAreOwed.toFixed(0)}</Text>
+            <Text style={styles.balanceItemValue}>{formatCurrency(youAreOwed)}</Text>
           </View>
         </View>
       </View>
@@ -738,6 +749,7 @@ export default function DashboardScreen() {
                   styles={styles}
                   onPay={openUPIPay}
                   index={index}
+                  formatCurrency={formatCurrency}
                 />
               ))}
             </View>
@@ -748,7 +760,7 @@ export default function DashboardScreen() {
   );
 }
 
-const TransactionItem = memo(({ transaction, userId, settling, colors, styles, onPay, index }: any) => {
+const TransactionItem = memo(({ transaction, userId, settling, colors, styles, onPay, index, formatCurrency }: any) => {
   const isPayer = userId === transaction.fromUserId;
   const isSettling = settling === `${transaction.fromUserId}-${transaction.toUserId}`;
   
@@ -777,7 +789,7 @@ const TransactionItem = memo(({ transaction, userId, settling, colors, styles, o
               : (transaction.fromUser?.username ? `@${transaction.fromUser.username}` : transaction.fromUser?.email)}
           </Text>
         </View>
-        <Text style={styles.transactionAmount}>₹{transaction.amount.toFixed(0)}</Text>
+        <Text style={styles.transactionAmount}>{formatCurrency(transaction.amount)}</Text>
       </View>
       
       {isPayer ? (

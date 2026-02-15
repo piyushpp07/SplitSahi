@@ -13,7 +13,7 @@ export interface User {
   phone?: string | null;
   upiId?: string | null;
   avatarUrl?: string | null;
-  currency?: string;
+  currency?: string; // e.g. "INR", "USD"
   createdAt?: string;
 }
 
