@@ -63,11 +63,14 @@ export async function checkUsername(username: string) {
   return { available: !existing };
 }
 
+// ... imports remain the same
+
 export async function register(email: string, password: string, name: string, username: string, emoji?: string) {
   const lowerEmail = email.toLowerCase().trim();
   const lowerUsername = username.toLowerCase().trim();
 
-  // 1. Check if email exists
+  // 1. Check if email exists (Verified users only)
+  // Note: We don't check pending registrations, they will be overwritten or fail at verification if taken.
   if (lowerEmail) {
     const existing = await prisma.user.findUnique({ where: { email: lowerEmail } });
     if (existing) throw new AppError(400, "Email already registered", "EMAIL_EXISTS");
@@ -79,55 +82,78 @@ export async function register(email: string, password: string, name: string, us
 
   const passwordHash = await bcrypt.hash(password, SALT_ROUNDS);
 
-  // 3. Create user
-  const user = await prisma.user.create({
-    data: {
-      email: lowerEmail,
-      name,
-      username: lowerUsername,
-      emoji: emoji || null,
-      passwordHash,
-      emailVerified: false,
-      phone: null,
-      phoneVerified: false
-    },
-    select: { id: true, email: true, name: true, username: true, emoji: true, upiId: true, avatarUrl: true, createdAt: true },
-  });
-
-  // 4. Send OTP to email
+  // 3. Send OTP with metadata (Deferred Creation)
+  // We store the registration data in the OTP record.
   const { sendOTP } = await import("./otp.js");
-  await sendOTP(lowerEmail, "email");
 
-  return { user, needsVerification: true };
+  const metadata = {
+    name,
+    username: lowerUsername,
+    emoji: emoji || null,
+    passwordHash,
+  };
+
+  await sendOTP(lowerEmail, "email", metadata);
+
+  return {
+    user: null,
+    needsVerification: true,
+    message: "Verification code sent to email."
+  };
 }
 
 export async function verifyOTPIdentifier(identifier: string, otp: string, type: "phone" | "email" = "email") {
   const normalized = identifier.toLowerCase().trim();
-  // We only support email verification for now based on requirements
+
   if (type !== 'email') {
     throw new AppError(400, "Only email verification is supported", "INVALID_TYPE");
   }
 
+  // Verify OTP and get metadata
   const result = await verifyOTP(normalized, otp, type);
   if (!result.success) throw new AppError(400, result.message, "OTP_VERIFICATION_FAILED");
 
-  const user = await prisma.user.findUnique({
-    where: { email: normalized }
-  }) as any;
+  // Check if user already exists
+  let user = await prisma.user.findUnique({ where: { email: normalized } });
 
   if (!user) {
-    return {
-      needsRegistration: true,
-      verifiedIdentifier: identifier,
-      type
-    };
-  }
+    // User doesn't exist -> Create from metadata
+    const metadata = result.metadata;
 
-  // Mark as verified
-  await prisma.user.update({
-    where: { id: user.id },
-    data: { emailVerified: true }
-  });
+    if (!metadata || !metadata.passwordHash) {
+      // No pending registration found?
+      return {
+        needsRegistration: true,
+        verifiedIdentifier: identifier,
+        type
+      };
+    }
+
+    try {
+      user = await prisma.user.create({
+        data: {
+          email: normalized,
+          name: metadata.name,
+          username: metadata.username,
+          emoji: metadata.emoji,
+          passwordHash: metadata.passwordHash,
+          emailVerified: true, // Verified immediately
+        }
+      });
+    } catch (e: any) {
+      // Handle race condition for unique username or email
+      if (e.code === 'P2002') {
+        throw new AppError(400, "Username or email already taken (Race condition)", "USERNAME_TAKEN");
+      }
+      throw e;
+    }
+  } else {
+    // User exists -> Mark verified
+    await prisma.user.update({
+      where: { id: user.id },
+      data: { emailVerified: true }
+    });
+  }
 
   const token = jwt.sign(
     { userId: user.id, email: user.email || "" } as JwtPayload,

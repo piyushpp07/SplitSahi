@@ -7,106 +7,50 @@ import dns from "dns";
 const OTP_LENGTH = 6;
 const OTP_EXPIRY_MINUTES = 10;
 
-// Email configuration
-const RESEND_API_URL = "https://api.resend.com/emails";
-
-/**
- * Generate a random 6-digit OTP code
- */
 function generateOTP(): string {
   return crypto.randomInt(100000, 999999).toString();
 }
 
-/**
- * Send OTP via email using Resend API (Standard for cloud platforms like Render)
- */
-async function sendEmailOTP(email: string, code: string): Promise<void> {
-  console.log(`[OTP] 🚀 Attempting email send to ${email} via Resend`);
+async function sendEmailOTP(email: string, code: string): Promise<boolean> {
+  console.log(`[OTP] 🚀 Attempting email send to ${email} via Nodemailer`);
 
-  const apiKey = process.env.RESEND_API_KEY;
-  if (!apiKey) {
-    console.warn("[OTP] ❌ RESEND_API_KEY is missing in environment variables.");
+  const user = process.env.SMTP_USER;
+  const pass = process.env.SMTP_PASS;
+
+  if (!user || !pass) {
+    console.warn("[OTP] ❌ SMTP credentials missing (SMTP_USER/SMTP_PASS).");
     console.log(`[OTP] FOR DEV/DEBUG: Code for ${email} is: ${code}`);
-    return;
+    return false;
   }
 
   try {
-    const response = await fetch(RESEND_API_URL, {
-      method: "POST",
-      headers: {
-        "Authorization": `Bearer ${apiKey}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        from: "SplitItUp <onboarding@resend.dev>",
-        to: email,
-        subject: "SplitItUp - Your Verification Code",
-        html: `
-          <div style="font-family: sans-serif; max-width: 600px; margin: auto; padding: 20px; border: 1px solid #eee; border-radius: 10px;">
-            <h2 style="color: #059669; text-align: center;">Verify Your Email</h2>
-            <p>Hi there,</p>
-            <p>Thank you for joining SplitItUp! Use the code below to complete your registration:</p>
-            <div style="background: #f3f4f6; padding: 20px; text-align: center; border-radius: 8px; margin: 20px 0;">
-              <span style="font-size: 32px; font-weight: bold; letter-spacing: 5px; color: #111827;">${code}</span>
-            </div>
-            <p>This code will expire in <strong>${OTP_EXPIRY_MINUTES} minutes</strong>. If you didn't request this, please ignore this email.</p>
-            <hr style="border: none; border-top: 1px solid #eee; margin: 20px 0;" />
-            <p style="font-size: 12px; color: #6b7280; text-align: center;">SplitItUp - Manage shared expenses with ease.</p>
-          </div>
-        `,
-      }),
+    const transporter = nodemailer.createTransport({
+      service: process.env.SMTP_SERVICE || "gmail",
+      auth: { user, pass },
     });
 
-    if (response.ok) {
-      console.log(`[OTP] ✅ Email sent successfully to ${email}`);
-    } else {
-      const errorData = await response.json() as any;
-      console.error(`[OTP] ❌ Resend API Error:`, errorData);
-    }
+    await transporter.sendMail({
+      from: `SplitItUp <${user}>`,
+      to: email,
+      subject: "SplitItUp - Your Verification Code",
+      html: `
+        <div style="font-family: sans-serif; max-width: 600px; margin: auto; padding: 20px; border: 1px solid #eee; border-radius: 10px;">
+          <h2 style="color: #059669; text-align: center;">Verify Your Email</h2>
+          <p>Hi there,</p>
+          <p>Use the code below to complete your registration:</p>
+          <div style="background: #f3f4f6; padding: 20px; text-align: center; border-radius: 8px; margin: 20px 0;">
+            <span style="font-size: 32px; font-weight: bold; letter-spacing: 5px; color: #111827;">${code}</span>
+          </div>
+          <p>Expires in <strong>${OTP_EXPIRY_MINUTES} minutes</strong>.</p>
+        </div>
+      `,
+    });
+
+    console.log(`[OTP] ✅ Email sent successfully to ${email}`);
+    return true;
   } catch (error: any) {
-    console.error(`[OTP] ❌ Network error while calling Resend:`, error.message);
-  }
-}
-
-/**
- * Send OTP via SMS
- */
-async function sendSMSOTP(phone: string, code: string): Promise<void> {
-  const SMS_TEMPLATE_ID = "698b679cbbc7021af67771f6";
-
-  const authKey = process.env.MSG91_AUTH_KEY;
-  const senderId = process.env.MSG91_SENDER_ID || "";
-
-  if (authKey) {
-    try {
-      const mobile = phone.startsWith("+") ? phone.slice(1) : phone;
-      let url = `https://control.msg91.com/api/v5/otp?template_id=${SMS_TEMPLATE_ID}&mobile=${mobile}&authkey=${authKey}&otp=${code}&realTimeResponse=1`;
-
-      if (senderId) {
-        url += `&sender=${senderId}`;
-      }
-
-      console.log(`[OTP] 🚀 Calling Msg91 for ${phone}...`);
-
-      const response = await fetch(url, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          number: code // Matches ##number## in user template
-        })
-      });
-
-      const result = await response.json() as any;
-      console.log("[OTP] Msg91 Response:", JSON.stringify(result, null, 2));
-
-      if (result.type === "error") {
-        console.error(`[OTP] Msg91 rejected the request: ${result.message}`);
-      }
-    } catch (err) {
-      console.error("[OTP] Msg91 network or parsing error:", err);
-    }
-  } else {
-    console.log(`[OTP] NO AUTH KEY - FALLBACK CODE FOR ${phone}: ${code}`);
+    console.error(`[OTP] ❌ Nodemailer Error:`, error.message);
+    return false;
   }
 }
 
@@ -115,64 +59,50 @@ async function sendSMSOTP(phone: string, code: string): Promise<void> {
  */
 export async function sendOTP(
   identifier: string,
-  type: "email" | "phone"
+  type: "email" | "phone",
+  metadata?: any
 ): Promise<{ success: boolean; message: string; code?: string }> {
   try {
-    // Generate OTP
     const code = generateOTP();
     const expiresAt = new Date(Date.now() + OTP_EXPIRY_MINUTES * 60 * 1000);
 
-    // Delete any existing unverified OTPs for this identifier
+    // Clean old OTPs
     await prisma.oTPVerification.deleteMany({
-      where: {
-        identifier,
-        type,
-        verified: false,
-      },
+      where: { identifier, type, verified: false },
     });
 
-    // Create new OTP record
+    // Create new OTP record with metadata
     await prisma.oTPVerification.create({
       data: {
         identifier,
         code,
         type,
         expiresAt,
-      },
+        metadata: metadata || undefined,
+      } as any,
     });
 
-    // Send OTP
+    let isEmailFailure = false;
     if (type === "email") {
-      await sendEmailOTP(identifier, code);
+      const success = await sendEmailOTP(identifier, code);
+      isEmailFailure = !success;
     } else {
-      // For phone, we try to send SMS
-      await sendSMSOTP(identifier, code);
-
-      // If we're in development or no SMS key is present, we should also log it clearly for the user
-      if (process.env.NODE_ENV !== "production" || !process.env.MSG91_AUTH_KEY) {
-        console.log("\n" + "=".repeat(40));
-        console.log(`[OTP] 📧 EMAIL FALLBACK (if registered): ${identifier}`);
-        console.log(`[OTP] 🔑 CODE: ${code}`);
-        console.log("=".repeat(40) + "\n");
-      }
+      return { success: false, message: "SMS verification is disabled. Please use email." };
     }
 
     console.log("\n" + "=".repeat(40));
-    console.log(`[OTP] 🔑 VERIFICATION CODE: ${code}`);
+    console.log(`[OTP] 🔑 ${isEmailFailure ? "❌ EMAIL FAILED -> USE THIS CODE" : "VERIFICATION CODE"}: ${code}`);
     console.log(`[OTP] 📱 TO: ${identifier}`);
     console.log("=".repeat(40) + "\n");
 
     return {
       success: true,
-      message: `OTP sent to ${type === "email" ? "email" : "phone number"}`,
-      code, // Return code for dev usage
+      message: `OTP sent to ${type}`,
+      code,
     };
   } catch (error) {
     console.error("[OTP] Error sending OTP:", error);
-    return {
-      success: false,
-      message: "Failed to send OTP. Please try again.",
-    };
+    return { success: false, message: "Failed to send OTP. Please try again." };
   }
 }
 
@@ -180,84 +110,43 @@ export async function verifyOTP(
   identifier: string,
   code: string,
   type: "email" | "phone"
-): Promise<{ success: boolean; message: string }> {
+): Promise<{ success: boolean; message: string; metadata?: any }> {
   try {
-    // Master OTP for development bypass
-    if (process.env.NODE_ENV !== "production" && code === "111111") {
-      console.log(`[OTP] 🚨 MASTER OTP (111111) USED FOR ${identifier}`);
-
-      // Update user verification status
-      if (type === "email") {
-        await prisma.user.updateMany({
-          where: { email: identifier },
-          data: { emailVerified: true },
-        });
-      } else {
-        await prisma.user.updateMany({
-          where: { phone: identifier },
-          data: { phoneVerified: true },
-        });
-      }
-      return { success: true, message: "Verification successful (Master OTP)" };
-    }
-
     // Find OTP record
     const otpRecord = await prisma.oTPVerification.findFirst({
-      where: {
-        identifier,
-        code,
-        type,
-        verified: false,
-      },
-      orderBy: {
-        createdAt: "desc",
-      },
+      where: { identifier, type, verified: false },
+      orderBy: { createdAt: "desc" },
     });
 
+    // Master OTP check
+    const isMaster = (process.env.NODE_ENV !== "production" && code === "111111");
+
     if (!otpRecord) {
-      return {
-        success: false,
-        message: "Invalid OTP code",
-      };
+      // We must have a record to retrieve metadata for deferred registration
+      return { success: false, message: "Invalid OTP code (No records found)" };
     }
 
-    // Check if expired
+    if (!isMaster && otpRecord.code !== code) {
+      return { success: false, message: "Invalid OTP code" };
+    }
+
     if (new Date() > otpRecord.expiresAt) {
-      return {
-        success: false,
-        message: "OTP code has expired. Please request a new one.",
-      };
+      return { success: false, message: "OTP expired" };
     }
 
-    // Mark as verified
     await prisma.oTPVerification.update({
       where: { id: otpRecord.id },
       data: { verified: true },
     });
 
-    // Update user verification status
-    if (type === "email") {
-      await prisma.user.updateMany({
-        where: { email: identifier },
-        data: { emailVerified: true },
-      });
-    } else {
-      await prisma.user.updateMany({
-        where: { phone: identifier },
-        data: { phoneVerified: true },
-      });
-    }
-
     return {
       success: true,
       message: "Verification successful",
+      metadata: (otpRecord as any).metadata,
     };
   } catch (error) {
     console.error("[OTP] Error verifying OTP:", error);
-    return {
-      success: false,
-      message: "Verification failed. Please try again.",
-    };
+    return { success: false, message: "Verification failed" };
   }
 }
 
