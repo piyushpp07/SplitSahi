@@ -5,10 +5,12 @@ import { router } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
 import * as LocalAuthentication from "expo-local-authentication";
 import * as SecureStore from "expo-secure-store";
-import { useTheme } from "@/contexts/ThemeContext";
+import * as Notifications from "expo-notifications";
+import { useTheme, ThemeMode } from "@/contexts/ThemeContext";
 
 const BIOMETRIC_KEY = "splitsahise_biometric_enabled";
 const NOTIFICATIONS_KEY = "splitsahise_notifications_enabled";
+const SAVED_IDENTIFIER_KEY = "splitsahise_user_identifier";
 
 import { useAuthStore } from "@/store/authStore";
 import { apiPatch } from "@/lib/api";
@@ -86,6 +88,12 @@ export default function PreferencesScreen() {
 
       if (result.success) {
         await SecureStore.setItemAsync(BIOMETRIC_KEY, "true");
+        // Save contemporary identifier
+        if (user?.email) {
+          await SecureStore.setItemAsync(SAVED_IDENTIFIER_KEY, user.email);
+        } else if (user?.username) {
+          await SecureStore.setItemAsync(SAVED_IDENTIFIER_KEY, user.username);
+        }
         setBiometricEnabled(true);
         Alert.alert("Done!", `${biometricType} is now enabled for login`);
       } else {
@@ -98,19 +106,48 @@ export default function PreferencesScreen() {
   }
 
   async function toggleNotifications(value: boolean) {
+    if (value) {
+      const result = await LocalAuthentication.authenticateAsync({
+        promptMessage: "Confirm settings change",
+      });
+      if (!result.success) return;
+    }
     await SecureStore.setItemAsync(NOTIFICATIONS_KEY, value.toString());
     setNotificationsEnabled(value);
-    if (value) {
-      Alert.alert("Notifications On", "You'll get alerts for new expenses and payments");
-    }
   }
 
   async function togglePush(value: boolean) {
     if (value) {
-      Alert.alert("Development Build Required", "Push notifications are not supported in Expo Go. Please create a development build to test this feature.");
-      setPushEnabled(false);
-    } else {
+      const { status: existingStatus } = await Notifications.getPermissionsAsync();
+      let finalStatus = existingStatus;
+      if (existingStatus !== 'granted') {
+        const { status } = await Notifications.requestPermissionsAsync();
+        finalStatus = status;
+      }
+      if (finalStatus !== 'granted') {
+        Alert.alert('Permission Required', 'Enable notifications in settings to use push features');
         setPushEnabled(false);
+        return;
+      }
+      setPushEnabled(true);
+    } else {
+      setPushEnabled(false);
+    }
+  }
+
+  async function testNotification() {
+    try {
+      await Notifications.scheduleNotificationAsync({
+        content: {
+          title: "SahiSplit Test! 💸",
+          body: "This is a test notification to verify your settings.",
+          data: { screen: 'preferences' },
+          sound: true,
+        },
+        trigger: null, // deliver immediately
+      });
+    } catch (e) {
+      Alert.alert("Error", "Could not trigger notification");
     }
   }
 
@@ -322,48 +359,18 @@ export default function PreferencesScreen() {
             </View>
             
             <TouchableOpacity 
-              style={styles.row}
-              onPress={() => {
-                Alert.alert("Not Supported", "Push notifications are not supported in Expo Go.");
-              }}
+              style={[styles.row, styles.lastRow]}
+              onPress={testNotification}
             >
               <View style={[styles.rowIconContainer, { backgroundColor: isDark ? 'rgba(59, 130, 246, 0.2)' : '#eff6ff' }]}>
                 <Ionicons name="paper-plane-outline" size={18} color={colors.info} />
               </View>
               <View style={styles.rowContent}>
-                <Text style={[styles.rowTitle, { color: colors.info }]}>Test Push Notification</Text>
+                <Text style={[styles.rowTitle, { color: colors.info }]}>Test Notification</Text>
+                <Text style={styles.rowSubtitle}>Check if alerts are working</Text>
               </View>
               <Ionicons name="chevron-forward" size={16} color={colors.textTertiary} />
             </TouchableOpacity>
-
-            <View style={styles.row}>
-              <View style={styles.rowIconContainer}>
-                <Ionicons name="notifications" size={18} color={colors.accent} />
-              </View>
-              <View style={styles.rowContent}>
-                <Text style={styles.rowTitle}>In-App Alerts</Text>
-                <Text style={styles.rowSubtitle}>Show alerts for expenses & payments</Text>
-              </View>
-              <Switch
-                value={notificationsEnabled}
-                onValueChange={toggleNotifications}
-                trackColor={{ false: colors.textMuted, true: colors.primary }}
-                thumbColor={"#ffffff"}
-              />
-            </View>
-
-            <View style={[styles.row, styles.lastRow]}>
-              <View style={styles.rowIconContainer}>
-                <Ionicons name="mail" size={18} color={colors.textSecondary} />
-              </View>
-              <View style={styles.rowContent}>
-                <Text style={styles.rowTitle}>Email Summary</Text>
-                <Text style={styles.rowSubtitle}>Weekly activity recap</Text>
-              </View>
-              <View style={{ backgroundColor: colors.surfaceActive, paddingHorizontal: 8, paddingVertical: 4, borderRadius: 6 }}>
-                <Text style={{ color: colors.textSecondary, fontSize: 10, fontWeight: 'bold' }}>Coming Soon</Text>
-              </View>
-            </View>
           </View>
         </View>
 
@@ -388,117 +395,49 @@ export default function PreferencesScreen() {
           </View>
         </View>
 
-        {/* App Section */}
+        {/* Appearance Section */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Appearance</Text>
-          
           <View style={styles.card}>
             <View style={styles.themeContainer}>
               <Text style={styles.rowTitle}>Theme</Text>
-              
               <View style={styles.themeOptions}>
-                {/* System */}
-                <TouchableOpacity 
-                  onPress={() => setThemeMode("system")}
-                  style={[
-                    styles.themeOption,
-                    { 
-                      borderColor: themeMode === "system" ? colors.primary : colors.border,
-                      backgroundColor: themeMode === "system" ? (isDark ? 'rgba(56, 189, 248, 0.1)' : '#f0f9ff') : colors.surface
-                    }
-                  ]}
-                >
-                  <Ionicons 
-                    name="phone-portrait-outline" 
-                    size={24} 
-                    color={themeMode === "system" ? colors.primary : colors.textMuted} 
-                  />
-                  <Text style={[
-                    styles.themeText,
-                    { color: themeMode === "system" ? colors.primary : colors.textSecondary }
-                  ]}>
-                    System
-                  </Text>
-                </TouchableOpacity>
-
-                {/* Light */}
-                <TouchableOpacity 
-                  onPress={() => setThemeMode("light")}
-                  style={[
-                    styles.themeOption,
-                    { 
-                      borderColor: themeMode === "light" ? colors.primary : colors.border,
-                      backgroundColor: themeMode === "light" ? (isDark ? 'rgba(56, 189, 248, 0.1)' : '#f0f9ff') : colors.surface
-                    }
-                  ]}
-                >
-                  <Ionicons 
-                    name="sunny-outline" 
-                    size={24} 
-                    color={themeMode === "light" ? colors.primary : colors.textMuted} 
-                  />
-                  <Text style={[
-                    styles.themeText,
-                    { color: themeMode === "light" ? colors.primary : colors.textSecondary }
-                  ]}>
-                    Light
-                  </Text>
-                </TouchableOpacity>
-
-                {/* Dark */}
-                <TouchableOpacity 
-                  onPress={() => setThemeMode("dark")}
-                  style={[
-                    styles.themeOption,
-                    { 
-                      borderColor: themeMode === "dark" ? colors.primary : colors.border,
-                      backgroundColor: themeMode === "dark" ? (isDark ? 'rgba(56, 189, 248, 0.1)' : '#f0f9ff') : colors.surface
-                    }
-                  ]}
-                >
-                  <Ionicons 
-                    name="moon-outline" 
-                    size={24} 
-                    color={themeMode === "dark" ? colors.primary : colors.textMuted} 
-                  />
-                  <Text style={[
-                    styles.themeText,
-                    { color: themeMode === "dark" ? colors.primary : colors.textSecondary }
-                  ]}>
-                    Dark
-                  </Text>
-                </TouchableOpacity>
+                {[
+                  { mode: 'system', label: 'System', icon: 'phone-portrait-outline' },
+                  { mode: 'light', label: 'Light', icon: 'sunny-outline' },
+                  { mode: 'dark', label: 'Dark', icon: 'moon-outline' }
+                ].map((item) => {
+                  const isActive = themeMode === item.mode;
+                  return (
+                    <TouchableOpacity 
+                      key={item.mode}
+                      onPress={() => setThemeMode(item.mode as ThemeMode)}
+                      style={[
+                        styles.themeOption,
+                        { 
+                          borderColor: isActive ? colors.primary : colors.border,
+                          backgroundColor: isActive 
+                            ? (isDark ? 'rgba(129, 140, 248, 0.15)' : '#eff6ff') 
+                            : colors.surface
+                        }
+                      ]}
+                    >
+                      <Ionicons 
+                        name={item.icon as any} 
+                        size={22} 
+                        color={isActive ? colors.primary : colors.textMuted} 
+                      />
+                      <Text style={[
+                        styles.themeText,
+                        { color: isActive ? colors.primary : colors.textSecondary }
+                      ]}>
+                        {item.label}
+                      </Text>
+                    </TouchableOpacity>
+                  );
+                })}
               </View>
             </View>
-            
-            {/* Language Modal (Simulated) */}
-            <TouchableOpacity 
-              style={[styles.row, styles.lastRow, { borderTopWidth: 1, borderTopColor: colors.border }]}
-              onPress={() => {
-                Alert.alert(
-                  "Select Language",
-                  "Choose your preferred language:",
-                  [
-                    { text: "English (Default)", onPress: () => {} },
-                    { text: "Hindi", onPress: () => Alert.alert("Coming Soon", "Hindi support is on the roadmap!") },
-                    { text: "Spanish", onPress: () => Alert.alert("Coming Soon", "Spanish support is on the roadmap!") },
-                    { text: "French", onPress: () => Alert.alert("Coming Soon", "French support is on the roadmap!") },
-                    { text: "German", onPress: () => Alert.alert("Coming Soon", "German support is on the roadmap!") },
-                    { text: "Japanese", onPress: () => Alert.alert("Coming Soon", "Japanese support is on the roadmap!") },
-                    { text: "Cancel", style: "cancel" }
-                  ]
-                );
-              }}
-            >
-              <View style={styles.rowIconContainer}>
-                <Ionicons name="language" size={18} color={colors.textSecondary} />
-              </View>
-              <View style={styles.rowContent}>
-                <Text style={styles.rowTitle}>Language</Text>
-                <Text style={styles.rowSubtitle}>English</Text>
-              </View>
-              <Ionicons name="chevron-forward" size={18} color={colors.textTertiary} />
-            </TouchableOpacity>
           </View>
         </View>
 
