@@ -69,21 +69,25 @@ export async function register(email: string, password: string, name: string, us
   const lowerEmail = email.toLowerCase().trim();
   const lowerUsername = username.toLowerCase().trim();
 
-  // 1. Check if email exists (Verified users only)
-  // Note: We don't check pending registrations, they will be overwritten or fail at verification if taken.
-  if (lowerEmail) {
-    const existing = await prisma.user.findUnique({ where: { email: lowerEmail } });
-    if (existing) throw new AppError(400, "Email already registered", "EMAIL_EXISTS");
+  // 1. Check if email exists (Unverified users will be overwritten/updated)
+  const existing = await prisma.user.findUnique({ where: { email: lowerEmail } });
+  if (existing) {
+    if (existing.emailVerified) {
+      throw new AppError(400, "Email already registered", "EMAIL_EXISTS");
+    }
+    // If user exists but is NOT verified, we allow the registration to proceed 
+    // effectively updating their pending details. Or we can just let metadata creation handle it.
   }
 
   // 2. Check username
   const existingUser = await prisma.user.findUnique({ where: { username: lowerUsername } });
-  if (existingUser) throw new AppError(400, "Username already taken", "USERNAME_TAKEN");
+  if (existingUser && (existingUser.email !== lowerEmail || existingUser.emailVerified)) {
+    throw new AppError(400, "Username already taken", "USERNAME_TAKEN");
+  }
 
   const passwordHash = await bcrypt.hash(password, SALT_ROUNDS);
 
   // 3. Send OTP with metadata (Deferred Creation)
-  // We store the registration data in the OTP record.
   const { sendOTP } = await import("./otp.js");
 
   const metadata = {
@@ -91,15 +95,33 @@ export async function register(email: string, password: string, name: string, us
     username: lowerUsername,
     emoji: emoji || null,
     passwordHash,
+    intent: "REGISTER"
   };
 
   await sendOTP(lowerEmail, "email", metadata);
 
   return {
-    user: null,
     needsVerification: true,
     message: "Verification code sent to email."
   };
+}
+
+export async function forgotPasswordOTP(email: string) {
+  const lowerEmail = email.toLowerCase().trim();
+
+  // 1. Check if user exists
+  const user = await prisma.user.findUnique({ where: { email: lowerEmail } });
+  if (!user) {
+    throw new AppError(404, "User not found with this email", "USER_NOT_FOUND");
+  }
+
+  // 2. Send OTP with Intent
+  const { sendOTP } = await import("./otp.js");
+  const metadata = { intent: "FORGOT_PASSWORD" };
+
+  await sendOTP(lowerEmail, "email", metadata);
+
+  return { success: true, message: "Reset code sent to email." };
 }
 
 export async function verifyOTPIdentifier(identifier: string, otp: string, type: "phone" | "email" = "email") {
