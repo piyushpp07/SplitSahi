@@ -33,15 +33,16 @@ usersRouter.patch(
     .withMessage("Invalid UPI ID format (e.g., name@bank)"),
   body("avatarUrl").optional().trim(),
   body("emoji").optional().trim(),
+  body("currency").optional().isLength({ min: 3, max: 3 }).withMessage("Invalid currency code"),
   async (req: AuthRequest, res, next) => {
     try {
       const err = validationResult(req);
       if (!err.isEmpty()) throw new AppError(400, err.array()[0].msg, "VALIDATION_ERROR");
       const user = (req as AuthRequest & { userEntity: { id: string } }).userEntity;
-      const { name, phone, upiId, avatarUrl, emoji } = req.body;
+      const { name, phone, upiId, avatarUrl, emoji, currency } = req.body;
       const updated = await prisma.user.update({
         where: { id: user.id },
-        data: { name, phone, upiId, avatarUrl, emoji },
+        data: { name, phone, upiId, avatarUrl, emoji, currency },
         select: { id: true, email: true, name: true, phone: true, username: true, upiId: true, avatarUrl: true, emoji: true, currency: true },
       });
       res.json(updated);

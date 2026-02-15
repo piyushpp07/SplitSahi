@@ -3,6 +3,8 @@ import { Decimal } from "@prisma/client/runtime/library";
 import { simplifyNetBalances, type NetBalance, type SimplifiedTransaction } from "./debtSimplification.js";
 
 
+import { convertCurrency } from "./currency.js";
+
 function toNum(d: Decimal | number): number {
   if (typeof d === "number") return d;
   return Number(d);
@@ -19,25 +21,34 @@ export async function getNetBalancesForUser(userId: string, groupId?: string | n
   // We need to compute balances for ALL users involved, not just the requesting user
   const netMap = new Map<string, number>();
 
+  // Fetch user's preferred currency
+  const user = await prisma.user.findUnique({
+    where: { id: userId },
+    select: { currency: true },
+  });
+  const userCurrency = user?.currency || "INR";
+  console.log(`[Balance] Calculating balances for ${userId} in ${userCurrency}`);
+
   // 1) Get all relevant expenses
+  // We need to fetch expenses where the user is involved EITHER as a payer OR as a participant
   const expenses = await prisma.expense.findMany({
     where: groupId
       ? { groupId }
       : {
         OR: [
-          { participants: { some: { userId } } },
-          { group: { members: { some: { userId } } } },
+          { payers: { some: { userId } } },      // User paid for something
+          { splits: { some: { userId } } },      // User owes something
+          { createdById: userId }                // User created it (just to be safe, though payers/splits covers debt)
         ],
       },
     include: {
       payers: true,
       splits: true,
-      participants: true,
     },
   });
 
   for (const exp of expenses) {
-    if (groupId && exp.groupId !== groupId) continue;
+    const currency = exp.currency || "INR";
 
     // For each expense, compute:
     // - what each user paid
@@ -46,33 +57,51 @@ export async function getNetBalancesForUser(userId: string, groupId?: string | n
 
     for (const payer of exp.payers) {
       const paid = toNum(payer.amountPaid);
-      netMap.set(payer.userId, (netMap.get(payer.userId) ?? 0) + paid);
+      const convertedPaid = await convertCurrency(paid, currency, userCurrency);
+
+      const current = netMap.get(payer.userId) ?? 0;
+      netMap.set(payer.userId, current + convertedPaid);
+      console.log(`[Balance] Expense Payer: ${paid} ${currency} -> ${convertedPaid} ${userCurrency}`);
     }
 
     for (const split of exp.splits) {
       const owed = toNum(split.amountOwed);
-      netMap.set(split.userId, (netMap.get(split.userId) ?? 0) - owed);
+      const convertedOwed = await convertCurrency(owed, currency, userCurrency);
+
+      const current = netMap.get(split.userId) ?? 0;
+      netMap.set(split.userId, current - convertedOwed);
     }
   }
 
   // 2) Settlements: fromUser pays toUser (reduces fromUser's debt, increases toUser's receivable)
   const settlements = await prisma.settlement.findMany({
     where: {
-      status: "COMPLETED",
-      ...(groupId ? { groupId } : { OR: [{ fromUserId: userId }, { toUserId: userId }] }),
+      status: "COMPLETED", // Only count completed settlements
+      ...(groupId
+        ? { groupId }
+        : {
+          OR: [
+            { fromUserId: userId },
+            { toUserId: userId }
+          ]
+        }),
     },
   });
 
   for (const s of settlements) {
     const amt = toNum(s.amount);
-    // fromUser gave money → they paid, so add to their net
-    netMap.set(s.fromUserId, (netMap.get(s.fromUserId) ?? 0) + amt);
-    // toUser received money → they now owe less, so subtract from their net
-    netMap.set(s.toUserId, (netMap.get(s.toUserId) ?? 0) - amt);
+    const currency = s.currency || "INR";
+    const convertedAmt = await convertCurrency(amt, currency, userCurrency);
+
+    // fromUser gave money → they paid, so add to their net (reducing their negative balance)
+    netMap.set(s.fromUserId, (netMap.get(s.fromUserId) ?? 0) + convertedAmt);
+    // toUser received money → they now owe less/gave value, so subtract from their net (reducing their positive balance)
+    netMap.set(s.toUserId, (netMap.get(s.toUserId) ?? 0) - convertedAmt);
   }
 
   const result: NetBalance[] = [];
   for (const [uid, net] of netMap) {
+    // Floating point precision check handling
     if (Math.abs(net) >= 0.01) {
       result.push({ userId: uid, amount: net });
     }
