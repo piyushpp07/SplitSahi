@@ -43,11 +43,18 @@ app.get("/health", (_req, res) => res.json({ ok: true, service: "splititup-api" 
 app.use(errorHandler);
 
 
-// Initialize Services
-initScheduler();
-updateExchangeRates().catch(console.error);
+// Initialize Services (Skip on Vercel to avoid cold-start scheduler duplication)
+if (!process.env.VERCEL) {
+  initScheduler();
+  updateExchangeRates().catch(console.error);
+}
 
 const HOST = '0.0.0.0';
-app.listen(Number(PORT), HOST, () => {
-  console.log(`SplitItUp API running at http://${HOST}:${PORT}`);
-});
+
+if (!process.env.VERCEL) {
+  app.listen(Number(PORT), HOST, () => {
+    console.log(`SplitItUp API running at http://${HOST}:${PORT}`);
+  });
+}
+
+export default app;
