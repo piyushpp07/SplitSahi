@@ -16,10 +16,39 @@ const FALLBACK_RATES: Record<string, number> = {
   "NZD": 1.63,
 };
 
+export const SUPPORTED_CURRENCIES = Object.keys(FALLBACK_RATES).map(code => ({
+  code,
+  name: code, // In a real app, map codes to full names (e.g., USD -> US Dollar)
+  symbol: code === "USD" ? "$" : code === "EUR" ? "€" : code === "INR" ? "₹" : code,
+}));
+
 // We will use a free API like ExchangeRate-API or similar
 // For now, this is a simulated service that "fetches" rates
 // In production, replace with real API call
 const EXCHANGE_API_URL = "https://api.exchangerate-api.com/v4/latest/USD";
+
+/**
+ * Get the exchange rate between two currencies.
+ */
+export async function getExchangeRate(from: string, to: string): Promise<number> {
+  if (from === to) return 1;
+
+  // Get rates relative to USD from DB or fallback
+  const [fromRateEntry, toRateEntry] = await Promise.all([
+    prisma.exchangeRate.findUnique({
+      where: { baseCurrency_targetCurrency: { baseCurrency: "USD", targetCurrency: from } },
+    }),
+    prisma.exchangeRate.findUnique({
+      where: { baseCurrency_targetCurrency: { baseCurrency: "USD", targetCurrency: to } },
+    }),
+  ]);
+
+  const fromRate = fromRateEntry?.rate.toNumber() || FALLBACK_RATES[from] || 1;
+  const toRate = toRateEntry?.rate.toNumber() || FALLBACK_RATES[to] || 1;
+
+  // Logic: 1 Unit From = (1 / FromRate) * ToRate
+  return parseFloat(((1 / fromRate) * toRate).toFixed(4));
+}
 
 export async function updateExchangeRates() {
   try {
@@ -63,25 +92,6 @@ export async function updateExchangeRates() {
  * Uses USD as the intermediate pivot.
  */
 export async function convertCurrency(amount: number, from: string, to: string): Promise<number> {
-  if (from === to) return amount;
-
-  // Get rates relative to USD
-  const [fromRateEntry, toRateEntry] = await Promise.all([
-    prisma.exchangeRate.findUnique({
-      where: { baseCurrency_targetCurrency: { baseCurrency: "USD", targetCurrency: from } },
-    }),
-    prisma.exchangeRate.findUnique({
-      where: { baseCurrency_targetCurrency: { baseCurrency: "USD", targetCurrency: to } },
-    }),
-  ]);
-
-  const fromRate = fromRateEntry?.rate.toNumber() || FALLBACK_RATES[from] || 1;
-  const toRate = toRateEntry?.rate.toNumber() || FALLBACK_RATES[to] || 1;
-
-  // Logic: Amount / FromRate = USD Value
-  // USD Value * ToRate = Target Value
-  const amountInUSD = amount / fromRate;
-  const converted = amountInUSD * toRate;
-
-  return parseFloat(converted.toFixed(2));
+  const rate = await getExchangeRate(from, to);
+  return parseFloat((amount * rate).toFixed(2));
 }
