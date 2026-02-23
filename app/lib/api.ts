@@ -70,6 +70,14 @@ export async function api<T>(
   const data = (await res.json().catch(() => ({}))) as any;
   if (!res.ok) {
     const err = data as ApiError;
+    if (res.status === 401) {
+      try {
+        const { useAuthStore } = await import("@/store/authStore");
+        useAuthStore.getState().logout();
+      } catch (e) {
+        // ignore
+      }
+    }
     throw new RequestError(err.error ?? `Request failed: ${res.status}`, err.code, err.data);
   }
   return data as T;
