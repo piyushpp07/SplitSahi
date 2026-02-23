@@ -2,7 +2,7 @@
   "expo": {
     "name": "SplitItUp",
     "slug": "splitsahi",
-    "version": "1.0.0",
+    "version": "1.0.1",
     "orientation": "portrait",
     "userInterfaceStyle": "automatic",
     "scheme": "splititup",
@@ -23,7 +23,8 @@
           "bhim"
         ],
         "NSFaceIDUsageDescription": "Allow SplitItUp to use Face ID for secure login."
-      }
+      },
+      "buildNumber": "2"
     },
     "icon": "./assets/images/icon.png",
     "android": {
@@ -32,7 +33,7 @@
         "backgroundColor": "#020617"
       },
       "package": "com.piyushparadkar.splititup",
-      "versionCode": 1,
+      "versionCode": 2,
       "intentFilters": [
         {
           "action": "VIEW",

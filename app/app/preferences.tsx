@@ -378,7 +378,7 @@ export default function PreferencesScreen() {
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Financial</Text>
           <View style={styles.card}>
-            <View style={[styles.row, styles.lastRow]}>
+            <View style={[styles.row, { borderBottomWidth: 1 }]}>
               <View style={styles.rowIconContainer}>
                 <Ionicons name="wallet-outline" size={18} color={colors.primary} />
               </View>
@@ -392,6 +392,20 @@ export default function PreferencesScreen() {
                 compact={true}
               />
             </View>
+
+            <TouchableOpacity 
+              style={[styles.row, styles.lastRow]}
+              onPress={() => router.push("/new/splitwise-import")}
+            >
+              <View style={[styles.rowIconContainer, { backgroundColor: isDark ? 'rgba(16, 185, 129, 0.2)' : '#ecfdf5' }]}>
+                <Ionicons name="cloud-download-outline" size={18} color={colors.success} />
+              </View>
+              <View style={styles.rowContent}>
+                <Text style={styles.rowTitle}>Import Data</Text>
+                <Text style={styles.rowSubtitle}>Import from Splitwise export</Text>
+              </View>
+              <Ionicons name="chevron-forward" size={18} color={colors.textTertiary} />
+            </TouchableOpacity>
           </View>
         </View>
 

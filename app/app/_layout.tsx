@@ -111,7 +111,7 @@ export default function RootLayout() {
               shouldDehydrateMutation: (_: any) => true,
               shouldDehydrateQuery: (query: any) => {
                 const gcTime = query.options.gcTime ?? 300000;
-                return gcTime > 0;
+                return query.state.status === 'success' && gcTime > 0;
               }
             }
           }}

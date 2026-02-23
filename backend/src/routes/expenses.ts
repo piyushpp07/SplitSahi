@@ -77,6 +77,43 @@ expensesRouter.post(
   }
 );
 
+expensesRouter.post(
+  "/bulk",
+  async (req: AuthRequest, res, next) => {
+    try {
+      const expenses = req.body.expenses;
+      if (!Array.isArray(expenses) || expenses.length === 0) {
+        throw new AppError(400, "Expenses array is required and must not be empty", "VALIDATION_ERROR");
+      }
+
+      const userId = (req as AuthRequest & { userEntity: { id: string } }).userEntity.id;
+
+      const results = [];
+      let failCount = 0;
+      let lastErr = null;
+
+      for (const expenseData of expenses) {
+        try {
+          const exp = await ExpenseService.createExpense(userId, expenseData);
+          results.push(exp);
+        } catch (innerErr: any) {
+          console.error("Failed to import expense:", innerErr?.message || innerErr);
+          failCount++;
+          lastErr = innerErr;
+        }
+      }
+
+      if (results.length === 0 && failCount > 0) {
+        throw new AppError(400, "All expenses failed to import. Last error: " + (lastErr?.message || "Unknown error"), "IMPORT_ERROR");
+      }
+
+      res.status(201).json({ count: results.length, failed: failCount });
+    } catch (e) {
+      next(e);
+    }
+  }
+);
+
 expensesRouter.get("/:id", async (req: AuthRequest, res, next) => {
   try {
     const userId = (req as AuthRequest & { userEntity: { id: string } }).userEntity.id;
